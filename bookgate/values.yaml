@@ -1,7 +1,7 @@
 # values.yaml — production defaults for EKS deployment.
 
 # ── Image registry (ECR) ─────────────────────────────────────────────────────
-# Populated by Terraform output: ecr_registry_url
+# Terraform output: ecr_registry_url
 ecr:
   registry: "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com"
 
@@ -60,32 +60,25 @@ frontend:
       memory: 128Mi
 
 # ── Secrets — External Secrets Operator ──────────────────────────────────────
-# ESO watches the ExternalSecret object and syncs a K8s Secret from AWS
-# Secrets Manager automatically. No manual kubectl steps needed.
+# ESO reads the ExternalSecret below and creates bookgate-secret in this namespace.
+# The Helm release assumes bookgate-secret already exists (ESO has synced it)
+# before app pods start. Migration must also be run after sync is confirmed.
 #
-# Prerequisites (done once at cluster level, not by this chart):
-#   1. ESO installed: helm install eso external-secrets/external-secrets
-#   2. ClusterSecretStore created and pointing to AWS SM via IRSA
-#
-# The K8s Secret produced by ESO must contain:
-#   DATABASE_URL, SECRET_KEY, ADMIN_PASSWORD, OPENAI_API_KEY
+# Terraform creates the SM secret shell; the operator populates it once:
+#   aws secretsmanager put-secret-value \
+#     --secret-id bookgate/dev/app-secrets \
+#     --secret-string '{"DATABASE_URL":"...","SECRET_KEY":"...","ADMIN_PASSWORD":"...","OPENAI_API_KEY":"..."}'
 externalSecrets:
-  # Name of the ClusterSecretStore pre-configured at cluster level.
+  # Name of the ClusterSecretStore configured at cluster level (not by this chart).
   clusterSecretStoreName: "aws-secretsmanager"
-  # AWS Secrets Manager secret name. Terraform creates this.
-  remoteSecretName: "bookgate/prod"
-  # How often ESO re-syncs from SM.
+  # SM secret name — matches Terraform: "${project_name}/${environment}/app-secrets"
+  # Change to "bookgate/prod/app-secrets" for production environment.
+  remoteSecretName: "bookgate/dev/app-secrets"
+  # How often ESO re-syncs.
   refreshInterval: "1h"
 
-# Name of the K8s Secret that ESO creates. Deployments reference this.
+# Name of the K8s Secret that ESO creates. Referenced by all deployments.
 existingSecret: "bookgate-secret"
-
-# ── Database migration Job ────────────────────────────────────────────────────
-migrate:
-  image:
-    repository: bookgate/api-service
-    tag: "SET_IMAGE_TAG"
-    pullPolicy: Always
 
 # ── Ingress (AWS Load Balancer Controller) ────────────────────────────────────
 ingress:
