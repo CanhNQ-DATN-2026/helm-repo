@@ -23,7 +23,7 @@ spec:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /health
               port: {{ .Values.frontend.port }}
             initialDelaySeconds: 5
             periodSeconds: 10
