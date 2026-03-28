@@ -39,10 +39,6 @@ spec:
               value: {{ .Values.apiService.env.s3BucketName }}
             - name: AWS_DEFAULT_REGION
               value: {{ .Values.apiService.env.awsDefaultRegion }}
-            # AWS_ENDPOINT_URL and S3_PUBLIC_ENDPOINT_URL intentionally absent —
-            # production uses real S3 via the Pod's IAM role (IRSA).
-            - name: STORAGE_AUTO_CREATE_BUCKET
-              value: "false"
             - name: ADMIN_EMAIL
               value: {{ .Values.apiService.env.adminEmail }}
             - name: ADMIN_FULL_NAME

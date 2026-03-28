@@ -1,8 +1,4 @@
 # values.yaml — production defaults for EKS deployment.
-# No plaintext secret values live here. All secrets are referenced from
-# an existing Kubernetes Secret that is pre-synced from AWS Secrets Manager
-# (via External Secrets Operator or a one-time manual sync).
-# The secret name is configured via existingSecret below.
 
 # ── Image registry (ECR) ─────────────────────────────────────────────────────
 # Populated by Terraform output: ecr_registry_url
@@ -13,7 +9,7 @@ ecr:
 apiService:
   image:
     repository: bookgate/api-service
-    tag: "SET_IMAGE_TAG"        # e.g. git commit SHA from CI
+    tag: "SET_IMAGE_TAG"
     pullPolicy: Always
   replicas: 2
   port: 8000
@@ -63,22 +59,29 @@ frontend:
       cpu: 200m
       memory: 128Mi
 
-# ── Secrets ───────────────────────────────────────────────────────────────────
-# Name of a pre-existing Kubernetes Secret in the same namespace.
-# This secret must contain the following keys:
-#   SECRET_KEY       — JWT signing key
-#   DATABASE_URL     — full PostgreSQL connection string (from RDS)
-#   ADMIN_PASSWORD   — initial admin account password
-#   OPENAI_API_KEY   — OpenAI API key
+# ── Secrets — External Secrets Operator ──────────────────────────────────────
+# ESO watches the ExternalSecret object and syncs a K8s Secret from AWS
+# Secrets Manager automatically. No manual kubectl steps needed.
 #
-# Recommended: sync from AWS Secrets Manager using External Secrets Operator.
-# The Terraform repo should output the Secrets Manager ARN/name.
+# Prerequisites (done once at cluster level, not by this chart):
+#   1. ESO installed: helm install eso external-secrets/external-secrets
+#   2. ClusterSecretStore created and pointing to AWS SM via IRSA
+#
+# The K8s Secret produced by ESO must contain:
+#   DATABASE_URL, SECRET_KEY, ADMIN_PASSWORD, OPENAI_API_KEY
+externalSecrets:
+  # Name of the ClusterSecretStore pre-configured at cluster level.
+  clusterSecretStoreName: "aws-secretsmanager"
+  # AWS Secrets Manager secret name. Terraform creates this.
+  remoteSecretName: "bookgate/prod"
+  # How often ESO re-syncs from SM.
+  refreshInterval: "1h"
+
+# Name of the K8s Secret that ESO creates. Deployments reference this.
 existingSecret: "bookgate-secret"
 
 # ── Database migration Job ────────────────────────────────────────────────────
 migrate:
-  # Image used by the pre-install/pre-upgrade Helm Job.
-  # Must match the api-service image (same codebase, runs scripts/migrate.sh).
   image:
     repository: bookgate/api-service
     tag: "SET_IMAGE_TAG"
@@ -87,11 +90,7 @@ migrate:
 # ── Ingress (AWS Load Balancer Controller) ────────────────────────────────────
 ingress:
   host: "bookgate.example.com"
-  # ALB scheme: internet-facing (public) or internal
   scheme: "internet-facing"
-  # ALB idle timeout in seconds — must be > chat SSE stream duration
   idleTimeoutSeconds: 300
-  # ACM certificate ARN for HTTPS — leave empty to use HTTP only
   certificateArn: ""
-  # ALB ingress group — allows sharing one ALB across multiple Ingress objects
   groupName: "bookgate"
