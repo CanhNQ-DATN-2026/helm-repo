@@ -1,0 +1,97 @@
+# values.yaml — production defaults for EKS deployment.
+# No plaintext secret values live here. All secrets are referenced from
+# an existing Kubernetes Secret that is pre-synced from AWS Secrets Manager
+# (via External Secrets Operator or a one-time manual sync).
+# The secret name is configured via existingSecret below.
+
+# ── Image registry (ECR) ─────────────────────────────────────────────────────
+# Populated by Terraform output: ecr_registry_url
+ecr:
+  registry: "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com"
+
+# ── Service images — update tags manually on each release ────────────────────
+apiService:
+  image:
+    repository: bookgate/api-service
+    tag: "SET_IMAGE_TAG"        # e.g. git commit SHA from CI
+    pullPolicy: Always
+  replicas: 2
+  port: 8000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    corsOrigins: "https://bookgate.example.com"
+    awsDefaultRegion: "ap-southeast-1"
+    s3BucketName: "SET_S3_BUCKET_NAME"  # Terraform output: s3_bucket_name
+    adminEmail: "admin@bookgate.com"
+    adminFullName: "System Admin"
+
+chatService:
+  image:
+    repository: bookgate/chat-service
+    tag: "SET_IMAGE_TAG"
+    pullPolicy: Always
+  replicas: 1
+  port: 8001
+  resources:
+    requests:
+      cpu: 125m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  env:
+    corsOrigins: "https://bookgate.example.com"
+
+frontend:
+  image:
+    repository: bookgate/frontend
+    tag: "SET_IMAGE_TAG"
+    pullPolicy: Always
+  replicas: 1
+  port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+# Name of a pre-existing Kubernetes Secret in the same namespace.
+# This secret must contain the following keys:
+#   SECRET_KEY       — JWT signing key
+#   DATABASE_URL     — full PostgreSQL connection string (from RDS)
+#   ADMIN_PASSWORD   — initial admin account password
+#   OPENAI_API_KEY   — OpenAI API key
+#
+# Recommended: sync from AWS Secrets Manager using External Secrets Operator.
+# The Terraform repo should output the Secrets Manager ARN/name.
+existingSecret: "bookgate-secret"
+
+# ── Database migration Job ────────────────────────────────────────────────────
+migrate:
+  # Image used by the pre-install/pre-upgrade Helm Job.
+  # Must match the api-service image (same codebase, runs scripts/migrate.sh).
+  image:
+    repository: bookgate/api-service
+    tag: "SET_IMAGE_TAG"
+    pullPolicy: Always
+
+# ── Ingress (AWS Load Balancer Controller) ────────────────────────────────────
+ingress:
+  host: "bookgate.example.com"
+  # ALB scheme: internet-facing (public) or internal
+  scheme: "internet-facing"
+  # ALB idle timeout in seconds — must be > chat SSE stream duration
+  idleTimeoutSeconds: 300
+  # ACM certificate ARN for HTTPS — leave empty to use HTTP only
+  certificateArn: ""
+  # ALB ingress group — allows sharing one ALB across multiple Ingress objects
+  groupName: "bookgate"

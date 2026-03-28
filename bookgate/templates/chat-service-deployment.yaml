@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bookgate.name" . }}-chat
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.chatService.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "bookgate.name" . }}-chat
+  template:
+    metadata:
+      labels:
+        app: {{ include "bookgate.name" . }}-chat
+    spec:
+      containers:
+        - name: chat-service
+          image: {{ include "bookgate.image" (dict "registry" .Values.ecr.registry "repo" .Values.chatService.image.repository "tag" .Values.chatService.image.tag) }}
+          imagePullPolicy: {{ .Values.chatService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.chatService.port }}
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: SECRET_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: OPENAI_API_KEY
+            - name: API_SERVICE_URL
+              value: http://{{ include "bookgate.name" . }}-api-service:{{ .Values.apiService.port }}
+            - name: CORS_ORIGINS
+              value: {{ .Values.chatService.env.corsOrigins }}
+          resources:
+            {{- toYaml .Values.chatService.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.chatService.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.chatService.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
