@@ -13,6 +13,7 @@ spec:
       labels:
         app: {{ include "bookgate.name" . }}-api
     spec:
+      serviceAccountName: {{ .Values.apiService.serviceAccount.name }}
       containers:
         - name: api-service
           image: {{ include "bookgate.image" (dict "registry" .Values.ecr.registry "repo" .Values.apiService.image.repository "tag" .Values.apiService.image.tag) }}

@@ -13,6 +13,9 @@ apiService:
     pullPolicy: Always
   replicas: 2
   port: 8000
+  serviceAccount:
+    name: "backend-sa"
+    roleArn: ""  # Terraform output: backend_role_arn
   resources:
     requests:
       cpu: 250m
