@@ -1,0 +1,64 @@
+stages:
+  - lint
+  - deploy
+
+variables:
+  # Overridden by app pipeline trigger; fallback to "latest" for manual runs.
+  IMAGE_TAG: "latest"
+
+# ── Lint ──────────────────────────────────────────────────────────────────────
+lint:
+  stage: lint
+  image:
+    name: alpine/helm:3.15.0
+    entrypoint: [""]
+  script:
+    - helm lint bookgate/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "pipeline"
+
+# ── Deploy ────────────────────────────────────────────────────────────────────
+# CI variables: AWS_ROLE_ARN, AWS_REGION, ECR_REGISTRY,
+#               EKS_CLUSTER_NAME, BACKEND_ROLE_ARN, CERTIFICATE_ARN
+deploy:
+  stage: deploy
+  image:
+    name: alpine/k8s:1.29.2
+    entrypoint: [""]
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: https://gitlab.com
+  before_script:
+    - |
+      CREDS=$(aws sts assume-role-with-web-identity \
+        --role-arn          "$AWS_ROLE_ARN" \
+        --role-session-name "gitlab-deploy-${CI_PIPELINE_ID}" \
+        --web-identity-token "$GITLAB_OIDC_TOKEN" \
+        --region            "$AWS_REGION" \
+        --duration-seconds  3600 \
+        --query Credentials --output json)
+      export AWS_ACCESS_KEY_ID=$(echo "$CREDS"     | jq -r .AccessKeyId)
+      export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r .SecretAccessKey)
+      export AWS_SESSION_TOKEN=$(echo "$CREDS"     | jq -r .SessionToken)
+    - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+  script:
+    - |
+      helm upgrade --install bookgate ./bookgate \
+        --namespace bookgate \
+        --create-namespace \
+        --set ecr.registry="$ECR_REGISTRY" \
+        --set apiService.image.tag="$IMAGE_TAG" \
+        --set chatService.image.tag="$IMAGE_TAG" \
+        --set frontend.image.tag="$IMAGE_TAG" \
+        --set apiService.serviceAccount.roleArn="$BACKEND_ROLE_ARN" \
+        --set ingress.certificateArn="$CERTIFICATE_ARN" \
+        --wait \
+        --timeout 5m
+  rules:
+    # Auto deploy when triggered from app pipeline
+    - if: $CI_PIPELINE_SOURCE == "pipeline"
+      when: on_success
+    # Manual gate when pushing directly to helm repo
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
