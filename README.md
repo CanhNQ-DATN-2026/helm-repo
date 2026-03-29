@@ -1,290 +1,183 @@
 # Bookgate — Helm Repo
 
-Helm chart for deploying Bookgate to AWS EKS.
+Helm chart repo for deploying Bookgate application workloads to EKS.
 
----
+This repo deploys only:
+- `api-service`
+- `chat-service`
+- `frontend`
+
+It does not provision infrastructure. AWS infra is owned by the Terraform repo.
 
 ## Chart layout
 
-```
+```text
 helm-charts/
 └── bookgate/
     ├── Chart.yaml
     ├── values.yaml
     └── templates/
         ├── _helpers.tpl
-        ├── external-secret.yaml        # ESO ExternalSecret → creates bookgate-secret
+        ├── serviceaccount.yaml
+        ├── external-secret.yaml
         ├── api-service-deployment.yaml
         ├── api-service-service.yaml
         ├── chat-service-deployment.yaml
         ├── chat-service-service.yaml
         ├── frontend-deployment.yaml
         ├── frontend-service.yaml
-        └── ingress.yaml                # ALB Ingress
+        └── ingress.yaml
 ```
-
----
 
 ## Secret contract
 
-### What Terraform creates
+### Source of truth
+- AWS Secrets Manager secret: `bookgate/<env>/app-secrets`
+- K8s Secret created by ESO: `bookgate-secret`
 
-Terraform creates two Secrets Manager secrets:
+Expected properties inside AWS Secrets Manager:
+- `DATABASE_URL`
+- `SECRET_KEY`
+- `ADMIN_PASSWORD`
+- `OPENAI_API_KEY`
 
-| SM Secret | Who creates it | Contents |
-|---|---|---|
-| `bookgate/dev/app-secrets` | Terraform (shell only, values filled by operator) | `DATABASE_URL`, `SECRET_KEY`, `ADMIN_PASSWORD`, `OPENAI_API_KEY` |
-| `rds!db-bookgate-dev-postgres` | AWS RDS (auto-managed) | `username`, `password` |
-
-The chart only consumes `bookgate/dev/app-secrets`.
-The RDS-managed secret is used to **construct** `DATABASE_URL` — see below.
-
-### How DATABASE_URL is sourced
-
-`DATABASE_URL` does not exist pre-built anywhere. The operator must construct
-and populate it once after `terraform apply`:
-
-```bash
-# 1. Get the RDS endpoint from Terraform
-DB_HOST=$(terraform output -raw rds_endpoint)   # returns host:port
-# rds_endpoint includes :5432, so strip the port for the URL
-DB_ADDRESS=$(echo $DB_HOST | cut -d: -f1)
-
-# 2. Get the RDS master password from the RDS-managed SM secret
-DB_PASS=$(aws secretsmanager get-secret-value \
-  --secret-id $(terraform output -raw db_credentials_secret_arn) \
-  --query SecretString --output text | jq -r .password)
-
-# 3. Populate app-secrets with all four required keys
-aws secretsmanager put-secret-value \
-  --secret-id bookgate/dev/app-secrets \
-  --secret-string "$(jq -n \
-    --arg db  "postgresql://bookgate_admin:${DB_PASS}@${DB_ADDRESS}:5432/bookgate" \
-    --arg sk  "CHANGE_ME_32_char_random_string" \
-    --arg ap  "CHANGE_ME_admin_password" \
-    --arg oai "sk-..." \
-    '{DATABASE_URL:$db, SECRET_KEY:$sk, ADMIN_PASSWORD:$ap, OPENAI_API_KEY:$oai}')"
+### How it works
+```text
+Terraform
+  -> creates app secret shell in AWS Secrets Manager
+Operator
+  -> populates the 4 required properties
+ESO
+  -> reads ExternalSecret from this chart
+  -> creates/updates K8s Secret: bookgate-secret
+Pods
+  -> read values with secretKeyRef
 ```
 
-This is a **one-time setup step** after Terraform provisions the cluster.
-On upgrades the secret already exists and ESO keeps it in sync.
+### DATABASE_URL
+`DATABASE_URL` is not generated automatically by the chart.
 
-### What ESO creates
+It must be constructed once by the operator from:
+- Terraform output `rds_endpoint`
+- Terraform output `db_credentials_secret_arn` (RDS-managed password secret)
 
-The chart deploys an `ExternalSecret` that tells ESO to read
-`bookgate/dev/app-secrets` and create `bookgate-secret` in the `bookgate`
-namespace with these keys:
+Then stored into:
+- `bookgate/<env>/app-secrets`
 
-| K8s Secret key | SM property | Used by |
-|---|---|---|
-| `DATABASE_URL` | `DATABASE_URL` | api-service, migrate job |
-| `SECRET_KEY` | `SECRET_KEY` | api-service, chat-service, migrate job |
-| `ADMIN_PASSWORD` | `ADMIN_PASSWORD` | api-service, migrate job |
-| `OPENAI_API_KEY` | `OPENAI_API_KEY` | chat-service |
+## IRSA
 
----
+The chart creates `backend-sa` and annotates it with:
+- `apiService.serviceAccount.roleArn`
 
-## Cluster-level prerequisites (done once, not by this chart)
+`api-service` uses this ServiceAccount for S3 access.
 
-### 1. Install ESO
+Expected permissions on the backend IRSA role:
+- `s3:PutObject`
+- `s3:GetObject`
+- `s3:DeleteObject`
+- `s3:ListBucket`
 
-```bash
-helm repo add external-secrets https://charts.external-secrets.io
-helm install eso external-secrets/external-secrets \
-  --namespace external-secrets --create-namespace
-```
+App pods do not need Secrets Manager permissions.
 
-### 2. Create ClusterSecretStore
+## Values that must be set per environment
 
-ESO needs its own ServiceAccount with IRSA permission to read SM.
-The `ClusterSecretStore` name must match `externalSecrets.clusterSecretStoreName`
-in `values.yaml` (default: `aws-secretsmanager`).
+Minimum important overrides:
 
-```yaml
-apiVersion: external-secrets.io/v1beta1
-kind: ClusterSecretStore
-metadata:
-  name: aws-secretsmanager
-spec:
-  provider:
-    aws:
-      service: SecretsManager
-      region: ap-southeast-1
-      auth:
-        jwt:
-          serviceAccountRef:
-            name: external-secrets
-            namespace: external-secrets
-```
+| Key | Meaning |
+|---|---|
+| `ecr.registry` | Terraform output `ecr_registry_url` |
+| `apiService.image.tag` | image tag for api-service |
+| `chatService.image.tag` | image tag for chat-service |
+| `frontend.image.tag` | image tag for frontend |
+| `apiService.serviceAccount.roleArn` | Terraform output `backend_role_arn` |
+| `apiService.env.s3BucketName` | Terraform output `s3_bucket_name` |
+| `ingress.host` | public hostname |
+| `ingress.certificateArn` | ACM cert ARN if using HTTPS |
+| `externalSecrets.remoteSecretName` | e.g. `bookgate/dev/app-secrets` or `bookgate/prod/app-secrets` |
 
-```bash
-kubectl apply -f cluster-secret-store.yaml
-```
-
----
-
-## Required values.yaml overrides before deploy
-
-| Key | Description | Source |
-|---|---|---|
-| `ecr.registry` | ECR registry URL | Terraform output `ecr_registry_url` (use frontend or backend URL prefix) |
-| `apiService.image.tag` | App image tag | App repo CI (commit SHA) |
-| `chatService.image.tag` | App image tag | App repo CI |
-| `frontend.image.tag` | App image tag | App repo CI |
-| `apiService.env.s3BucketName` | S3 bucket name | Terraform output `s3_bucket_name` |
-| `ingress.host` | Public hostname | e.g. `bookgate.example.com` |
-| `externalSecrets.remoteSecretName` | SM secret name | `bookgate/dev/app-secrets` (dev) or `bookgate/prod/app-secrets` (prod) |
-
----
-
-## Operational sequence
+## Operational flow
 
 ### First install
+1. Run `terraform apply`
+2. Populate AWS Secrets Manager app secret
+3. Install ESO and create `ClusterSecretStore`
+4. Run `helm upgrade --install`
+5. Wait until `ExternalSecret` is synced and `bookgate-secret` exists
+6. Run DB migration explicitly
 
-```
-1. terraform apply
-   └─ creates: EKS, RDS, S3, ECR, bookgate/dev/app-secrets (shell)
+### Upgrade
+1. Update image tags
+2. Run `helm upgrade`
+3. If schema changed, run DB migration explicitly
 
-2. Populate app-secrets in SM  ← ONE-TIME MANUAL STEP
-   └─ construct DATABASE_URL from rds_endpoint + rds_master_password
-   └─ set SECRET_KEY, ADMIN_PASSWORD, OPENAI_API_KEY
+Migration is not a Helm hook in the current design.
 
-3. Install ESO + create ClusterSecretStore  ← ONCE PER CLUSTER
-
-4. helm install bookgate ./bookgate --namespace bookgate --create-namespace ...
-   └─ creates: ExternalSecret, Deployments, Services, Ingress
-
-5. Wait for ESO to sync
-   └─ kubectl get externalsecret -n bookgate bookgate-secret -w
-   └─ wait for READY = True
-
-6. Run database migration  ← EXPLICIT STEP
-   └─ see "Running migrations" section below
-
-7. Verify app pods are Running
-   └─ kubectl get pods -n bookgate
-```
-
-### Upgrade (new image tag)
-
-```
-1. Update image tags in values.yaml, commit, push
-2. helm upgrade bookgate ./bookgate --namespace bookgate ...
-   └─ ExternalSecret already exists, bookgate-secret already exists
-   └─ Deployments roll out new image
-3. If schema changed: run migration explicitly (step 6 above)
-```
-
----
-
-## Running migrations
-
-Migration is an **explicit operational step**, not a Helm hook.
-Run it after confirming `bookgate-secret` is synced and before (or after)
-rolling out a new Deployment — depending on whether the migration is
-forwards-compatible.
+## Example deploy command
 
 ```bash
-# Verify secret is synced first
-kubectl get secret bookgate-secret -n bookgate
-
-# Run migration
-IMAGE="<ECR_REGISTRY>/bookgate/api-service:<IMAGE_TAG>"
-
-kubectl apply -f - <<EOF
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: bookgate-migrate-$(date +%Y%m%d%H%M%S)
-  namespace: bookgate
-spec:
-  ttlSecondsAfterFinished: 3600
-  backoffLimit: 2
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-        - name: migrate
-          image: $IMAGE
-          command: ["bash", "scripts/migrate.sh"]
-          envFrom:
-            - secretRef:
-                name: bookgate-secret
-          env:
-            - name: ADMIN_EMAIL
-              value: "admin@bookgate.com"
-            - name: ADMIN_FULL_NAME
-              value: "System Admin"
-            - name: S3_BUCKET_NAME
-              value: "<S3_BUCKET_NAME>"
-            - name: AWS_DEFAULT_REGION
-              value: "ap-southeast-1"
-EOF
-
-# Tail logs to confirm success
-kubectl logs -n bookgate -l job-name=bookgate-migrate-... -f
+helm upgrade --install bookgate ./bookgate \
+  --namespace bookgate \
+  --create-namespace \
+  --set ecr.registry="$ECR_REGISTRY" \
+  --set apiService.image.tag="$IMAGE_TAG" \
+  --set chatService.image.tag="$IMAGE_TAG" \
+  --set frontend.image.tag="$IMAGE_TAG" \
+  --set apiService.serviceAccount.roleArn="$BACKEND_ROLE_ARN" \
+  --set apiService.env.s3BucketName="$S3_BUCKET_NAME" \
+  --set externalSecrets.remoteSecretName="$REMOTE_SECRET_NAME" \
+  --set ingress.host="$INGRESS_HOST" \
+  --set ingress.certificateArn="$CERTIFICATE_ARN"
 ```
 
-Migration does: Alembic `upgrade head` + bootstrap admin account (idempotent).
-No sample/demo data is created.
+## CI/CD
 
----
+Pipeline file: `.gitlab-ci.yml`
 
-## Image tag update flow
+Stages:
+- `lint`
+- `deploy`
 
-```yaml
-# values.yaml — update all four tags to the new commit SHA
-apiService:
-  image:
-    tag: "abc1234"
-chatService:
-  image:
-    tag: "abc1234"
-frontend:
-  image:
-    tag: "abc1234"
-```
+Behavior:
+- `lint`: `helm lint bookgate/`
+- `deploy`: GitLab OIDC -> assume AWS role -> `aws eks update-kubeconfig` -> `helm upgrade --install`
 
-Commit and push → Helm repo CI runs `helm upgrade`.
+Current trigger behavior:
+- push to helm repo default branch -> manual deploy job
+- pipeline trigger -> auto deploy job
 
----
+Required GitLab CI variables:
+- `AWS_ROLE_ARN`
+- `AWS_REGION`
+- `ECR_REGISTRY`
+- `EKS_CLUSTER_NAME`
+- `BACKEND_ROLE_ARN`
+- `CERTIFICATE_ARN`
 
-## Ingress
+Recommended additional variables:
+- `REMOTE_SECRET_NAME`
+- `INGRESS_HOST`
 
-| Path | Backend |
-|---|---|
-| `/api/v1/chat` | chat-service (SSE — listed first) |
-| `/api/v1` | api-service |
-| `/` | frontend |
+## EKS auth for Helm CI
 
-```yaml
-ingress:
-  host: bookgate.example.com
-  scheme: internet-facing
-  idleTimeoutSeconds: 300    # must exceed longest SSE stream
-  certificateArn: ""         # ACM ARN for HTTPS; empty = HTTP only
-  groupName: bookgate
-```
+The Helm CI role needs:
+- AWS IAM: at least `eks:DescribeCluster`
+- EKS auth mapping into the cluster
+- Kubernetes RBAC suitable for deploying into namespace `bookgate`
 
----
+Prefer least-privilege RBAC over broad `system:masters`.
 
-## Lint and dry-run
+## Validation
 
 ```bash
 helm lint bookgate/
 
 helm template bookgate bookgate/ \
-  --set ecr.registry=123456789.dkr.ecr.ap-southeast-1.amazonaws.com \
+  --set ecr.registry=123456789.dkr.ecr.us-east-1.amazonaws.com \
   --set apiService.image.tag=abc1234 \
   --set chatService.image.tag=abc1234 \
   --set frontend.image.tag=abc1234 \
-  --set apiService.env.s3BucketName=bookgate-prod \
+  --set apiService.serviceAccount.roleArn=arn:aws:iam::123456789012:role/bookgate-eks-backend-role \
+  --set apiService.env.s3BucketName=bookgate-dev-books-123456789012 \
+  --set externalSecrets.remoteSecretName=bookgate/dev/app-secrets \
   --set ingress.host=bookgate.example.com
 ```
-
-Expected rendered resources:
-
-- `ExternalSecret` — ESO creates `bookgate-secret` from SM
-- `Deployment` — api-service, chat-service, frontend
-- `Service` — api-service, chat-service, frontend (ClusterIP)
-- `Ingress` — ALB with three path rules

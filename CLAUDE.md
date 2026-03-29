@@ -1,98 +1,116 @@
 # Bookgate Helm Charts — CLAUDE.md
 
 ## Repo overview
-Helm chart deploy toàn bộ Bookgate stack lên EKS. Chart tại `bookgate/`.
-Namespace mặc định: `bookgate`.
+Repo này chứa Helm chart production để deploy Bookgate lên EKS.
+Chart chính nằm ở `bookgate/`.
+
+Deployable workloads:
+- `api-service`
+- `chat-service`
+- `frontend`
+
+Không có Postgres, MinIO, gateway, hay local-only manifests trong chart này.
 
 ## Chart structure
-```
+```text
 bookgate/
 ├── Chart.yaml
-├── values.yaml              # production defaults — chỉnh sửa ở đây
+├── values.yaml
 └── templates/
-    ├── _helpers.tpl         # bookgate.name, bookgate.image
-    ├── serviceaccount.yaml  # backend-sa với IRSA annotation
+    ├── _helpers.tpl
+    ├── serviceaccount.yaml
     ├── api-service-deployment.yaml
     ├── api-service-service.yaml
     ├── chat-service-deployment.yaml
     ├── chat-service-service.yaml
     ├── frontend-deployment.yaml
     ├── frontend-service.yaml
-    ├── external-secret.yaml # ESO ExternalSecret → bookgate-secret
-    └── ingress.yaml         # AWS Load Balancer Controller
+    ├── external-secret.yaml
+    └── ingress.yaml
 ```
 
-## Secrets flow
-ESO (External Secrets Operator) đọc từ AWS Secrets Manager → tạo K8s Secret `bookgate-secret`.
-SM secret path: `bookgate/dev/app-secrets` (dev) hoặc `bookgate/prod/app-secrets` (prod).
-Keys trong secret: `DATABASE_URL`, `SECRET_KEY`, `ADMIN_PASSWORD`, `OPENAI_API_KEY`.
+## Secret flow
+- Chart tạo `ExternalSecret`
+- ESO đọc từ AWS Secrets Manager secret `${project}/${environment}/app-secrets`
+- ESO tạo K8s Secret `bookgate-secret`
+- Pods inject env bằng `secretKeyRef`
 
-**ESO phải sync xong trước khi app pods start.** Nếu pod báo lỗi mount secret → kiểm tra ExternalSecret status trước.
+Required keys trong `bookgate-secret`:
+- `DATABASE_URL`
+- `SECRET_KEY`
+- `ADMIN_PASSWORD`
+- `OPENAI_API_KEY`
+
+`DATABASE_URL` phải được operator populate vào app secret sau `terraform apply`.
 
 ## IRSA
-`backend-sa` ServiceAccount được annotate với IAM role ARN.
-Role có quyền: `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, `s3:ListBucket` trên S3 bucket sách.
-Không cần Secrets Manager permission (ESO handle riêng bằng ClusterSecretStore).
+- Chart tạo `backend-sa` qua `templates/serviceaccount.yaml`
+- `api-service` dùng `serviceAccountName: backend-sa`
+- ServiceAccount này phải được annotate với Terraform output `backend_role_arn`
+- Quyền role backend chỉ cần S3:
+  - `s3:PutObject`
+  - `s3:GetObject`
+  - `s3:DeleteObject`
+  - `s3:ListBucket`
 
-## Values cần override khi deploy
+App pods không cần Secrets Manager permission; ESO handle phần đó riêng.
 
-```yaml
-ecr:
-  registry: "392423995152.dkr.ecr.us-east-1.amazonaws.com"  # terraform output ecr_registry_url
+## Values cần override
+| Key | Meaning |
+|---|---|
+| `ecr.registry` | ECR registry prefix |
+| `apiService.image.tag` | image tag cho api-service |
+| `chatService.image.tag` | image tag cho chat-service |
+| `frontend.image.tag` | image tag cho frontend |
+| `apiService.serviceAccount.roleArn` | Terraform output `backend_role_arn` |
+| `apiService.env.s3BucketName` | Terraform output `s3_bucket_name` |
+| `ingress.host` | public host |
+| `ingress.certificateArn` | ACM certificate ARN nếu dùng HTTPS |
+| `externalSecrets.remoteSecretName` | ví dụ `bookgate/dev/app-secrets` hoặc `bookgate/prod/app-secrets` |
 
-apiService:
-  image:
-    tag: "<commit-sha>"
-  serviceAccount:
-    roleArn: "<terraform output backend_role_arn>"
+## Deploy flow
 
-chatService:
-  image:
-    tag: "<commit-sha>"
+### First install
+1. `terraform apply`
+2. Populate AWS Secrets Manager app secret
+3. Cài ESO + `ClusterSecretStore` ở cluster level
+4. `helm upgrade --install`
+5. Chờ `ExternalSecret` sync thành `bookgate-secret`
+6. Chạy migration explicit ngoài Helm hook
 
-frontend:
-  image:
-    tag: "<commit-sha>"
+### Upgrade
+1. Update image tags
+2. `helm upgrade`
+3. Nếu schema đổi, chạy migration explicit
 
-ingress:
-  host: "bookgate.example.com"
-  certificateArn: "<ACM cert ARN>"
-
-externalSecrets:
-  remoteSecretName: "bookgate/dev/app-secrets"  # đổi thành prod khi cần
-```
-
-## Helm install command
-```bash
-helm upgrade --install bookgate ./bookgate \
-  --namespace bookgate \
-  --create-namespace \
-  --set ecr.registry="<ECR_REGISTRY>" \
-  --set apiService.image.tag="<IMAGE_TAG>" \
-  --set chatService.image.tag="<IMAGE_TAG>" \
-  --set frontend.image.tag="<IMAGE_TAG>" \
-  --set apiService.serviceAccount.roleArn="<BACKEND_ROLE_ARN>" \
-  --set ingress.certificateArn="<CERT_ARN>" \
-  --wait --timeout 5m
-```
+Migration không còn là Helm hook.
 
 ## CI/CD
-- Pipeline: `.gitlab-ci.yml` — stages: `lint` → `deploy`
+- Pipeline file: `.gitlab-ci.yml`
 - `lint`: `helm lint bookgate/`
-- `deploy`: OIDC → EKS kubeconfig → `helm upgrade --install`
-- Khi trigger từ app pipeline: auto deploy
-- Khi push trực tiếp vào helm repo: manual gate
+- `deploy`: assume role qua OIDC, `aws eks update-kubeconfig`, rồi `helm upgrade --install`
+- Trigger mode hiện tại:
+  - push vào helm repo: manual gate
+  - pipeline trigger: auto deploy
 
-## CI variables (GitLab repo settings)
-| Variable | Mô tả |
-|----------|-------|
-| `AWS_ROLE_ARN` | IAM role cho helm CI (cần `eks:DescribeCluster` + EKS access entry) |
-| `AWS_REGION` | `us-east-1` |
-| `ECR_REGISTRY` | `392423995152.dkr.ecr.us-east-1.amazonaws.com` |
-| `EKS_CLUSTER_NAME` | `bookgate-eks` |
-| `BACKEND_ROLE_ARN` | terraform output `backend_role_arn` |
-| `CERTIFICATE_ARN` | ACM certificate ARN |
+Nếu workflow thực tế muốn manual hoàn toàn, cần sửa `.gitlab-ci.yml`.
+
+## CI variables
+| Variable | Meaning |
+|---|---|
+| `AWS_ROLE_ARN` | IAM role cho Helm CI |
+| `AWS_REGION` | AWS region |
+| `ECR_REGISTRY` | ECR registry prefix |
+| `EKS_CLUSTER_NAME` | cluster name |
+| `BACKEND_ROLE_ARN` | Terraform output `backend_role_arn` |
+| `CERTIFICATE_ARN` | ACM cert ARN |
+
+Khuyến nghị thêm biến riêng cho:
+- `REMOTE_SECRET_NAME`
+- `INGRESS_HOST`
 
 ## EKS auth
-Helm CI role cần được add vào EKS (aws-auth ConfigMap hoặc access entry) với quyền `system:masters`.
-Cluster dùng `CONFIG_MAP` mode (mặc định) — dùng `kubectl edit configmap aws-auth -n kube-system`.
+- Helm CI role cần `eks:DescribeCluster`
+- Role đó còn phải được map vào EKS auth
+- Không bắt buộc dùng `system:masters`; ưu tiên RBAC tối thiểu cho namespace app
+- Có thể dùng `aws-auth` hoặc EKS access entry tùy cluster auth mode thực tế
