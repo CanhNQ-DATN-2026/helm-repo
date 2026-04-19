@@ -1,0 +1,149 @@
+name: Helm Repo
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy for api-service, chat-service, and frontend"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: helm-repo-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+  BACKEND_ROLE_ARN: ${{ vars.BACKEND_ROLE_ARN }}
+  S3_BUCKET_NAME: ${{ vars.S3_BUCKET_NAME }}
+  INGRESS_HOST: ${{ vars.INGRESS_HOST }}
+  REMOTE_SECRET_NAME: ${{ vars.REMOTE_SECRET_NAME }}
+  CERTIFICATE_ARN: ${{ vars.CERTIFICATE_ARN }}
+
+jobs:
+  lint:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Helm Lint
+        run: helm lint bookgate/
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Deploy Inputs And Variables
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image_tag="$(printf '%s' "${{ github.event.inputs.image_tag }}" | tr -d '\r' | xargs)"
+          ecr_registry="$(printf '%s' "$ECR_REGISTRY" | tr -d '\r' | xargs)"
+          aws_region="$(printf '%s' "$AWS_REGION" | tr -d '\r' | xargs)"
+          eks_cluster_name="$(printf '%s' "$EKS_CLUSTER_NAME" | tr -d '\r' | xargs)"
+          backend_role_arn="$(printf '%s' "$BACKEND_ROLE_ARN" | tr -d '\r' | xargs)"
+          s3_bucket_name="$(printf '%s' "$S3_BUCKET_NAME" | tr -d '\r' | xargs)"
+          ingress_host="$(printf '%s' "$INGRESS_HOST" | tr -d '\r' | xargs)"
+          remote_secret_name="$(printf '%s' "${REMOTE_SECRET_NAME:-bookgate/dev/app-secrets}" | tr -d '\r' | xargs)"
+          certificate_arn="$(printf '%s' "${CERTIFICATE_ARN:-}" | tr -d '\r' | xargs)"
+
+          : "${image_tag:?workflow input image_tag is required}"
+          : "${aws_region:?AWS_REGION repository variable is required}"
+          : "${ecr_registry:?ECR_REGISTRY repository variable is required}"
+          : "${eks_cluster_name:?EKS_CLUSTER_NAME repository variable is required}"
+          : "${backend_role_arn:?BACKEND_ROLE_ARN repository variable is required}"
+          : "${s3_bucket_name:?S3_BUCKET_NAME repository variable is required}"
+          : "${ingress_host:?INGRESS_HOST repository variable is required}"
+
+          case "$ecr_registry" in
+            */*)
+              echo "ECR_REGISTRY must be the registry host only, for example 123456789012.dkr.ecr.us-east-1.amazonaws.com"
+              exit 1
+              ;;
+            *.dkr.ecr."$aws_region".amazonaws.com) ;;
+            *)
+              echo "ECR_REGISTRY ($ecr_registry) does not match AWS_REGION ($aws_region)"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "image_tag=$image_tag"
+            echo "aws_region=$aws_region"
+            echo "ecr_registry=$ecr_registry"
+            echo "eks_cluster_name=$eks_cluster_name"
+            echo "backend_role_arn=$backend_role_arn"
+            echo "s3_bucket_name=$s3_bucket_name"
+            echo "ingress_host=$ingress_host"
+            echo "remote_secret_name=$remote_secret_name"
+            echo "certificate_arn=$certificate_arn"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ steps.validate.outputs.aws_region }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-session-name: github-actions-helm-deploy
+
+      - name: Set Up Kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.29.15
+
+      - name: Set Up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.4
+
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --name "${{ steps.validate.outputs.eks_cluster_name }}" --region "${{ steps.validate.outputs.aws_region }}"
+
+      - name: Kubernetes Access Check
+        run: |
+          kubectl auth can-i create namespaces
+          kubectl auth can-i get deployments -n bookgate
+
+      - name: Helm Upgrade Install
+        run: |
+          helm upgrade --install bookgate ./bookgate \
+            --namespace bookgate \
+            --create-namespace \
+            --set ecr.registry="${{ steps.validate.outputs.ecr_registry }}" \
+            --set apiService.image.tag="${{ steps.validate.outputs.image_tag }}" \
+            --set chatService.image.tag="${{ steps.validate.outputs.image_tag }}" \
+            --set frontend.image.tag="${{ steps.validate.outputs.image_tag }}" \
+            --set apiService.serviceAccount.roleArn="${{ steps.validate.outputs.backend_role_arn }}" \
+            --set apiService.env.s3BucketName="${{ steps.validate.outputs.s3_bucket_name }}" \
+            --set ingress.host="${{ steps.validate.outputs.ingress_host }}" \
+            --set externalSecrets.remoteSecretName="${{ steps.validate.outputs.remote_secret_name }}" \
+            --set ingress.certificateArn="${{ steps.validate.outputs.certificate_arn }}" \
+            --wait \
+            --timeout 5m

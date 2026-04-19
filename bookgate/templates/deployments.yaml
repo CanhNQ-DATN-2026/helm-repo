@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bookgate.name" . }}-api
+  namespace: {{ include "bookgate.namespace" . }}
+spec:
+  replicas: {{ .Values.apiService.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "bookgate.name" . }}-api
+  template:
+    metadata:
+      labels:
+        app: {{ include "bookgate.name" . }}-api
+    spec:
+      serviceAccountName: {{ .Values.apiService.serviceAccount.name }}
+      containers:
+        - name: api-service
+          image: {{ include "bookgate.image" (dict "registry" .Values.ecr.registry "repo" .Values.apiService.image.repository "tag" .Values.apiService.image.tag) }}
+          imagePullPolicy: {{ .Values.apiService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.apiService.port }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: SECRET_KEY
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: ADMIN_PASSWORD
+            - name: S3_BUCKET_NAME
+              value: {{ .Values.apiService.env.s3BucketName | quote }}
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.apiService.env.awsDefaultRegion | quote }}
+            - name: ADMIN_EMAIL
+              value: {{ .Values.apiService.env.adminEmail | quote }}
+            - name: ADMIN_FULL_NAME
+              value: {{ .Values.apiService.env.adminFullName | quote }}
+            - name: CORS_ORIGINS
+              value: {{ .Values.apiService.env.corsOrigins | quote }}
+          resources:
+            {{- toYaml .Values.apiService.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.apiService.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.apiService.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bookgate.name" . }}-chat
+  namespace: {{ include "bookgate.namespace" . }}
+spec:
+  replicas: {{ .Values.chatService.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "bookgate.name" . }}-chat
+  template:
+    metadata:
+      labels:
+        app: {{ include "bookgate.name" . }}-chat
+    spec:
+      containers:
+        - name: chat-service
+          image: {{ include "bookgate.image" (dict "registry" .Values.ecr.registry "repo" .Values.chatService.image.repository "tag" .Values.chatService.image.tag) }}
+          imagePullPolicy: {{ .Values.chatService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.chatService.port }}
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: SECRET_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: OPENAI_API_KEY
+            - name: API_SERVICE_URL
+              value: {{ printf "http://%s-api-service:%v" (include "bookgate.name" .) .Values.apiService.port | quote }}
+            - name: CORS_ORIGINS
+              value: {{ .Values.chatService.env.corsOrigins | quote }}
+          resources:
+            {{- toYaml .Values.chatService.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.chatService.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.chatService.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bookgate.name" . }}-frontend
+  namespace: {{ include "bookgate.namespace" . }}
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "bookgate.name" . }}-frontend
+  template:
+    metadata:
+      labels:
+        app: {{ include "bookgate.name" . }}-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: {{ include "bookgate.image" (dict "registry" .Values.ecr.registry "repo" .Values.frontend.image.repository "tag" .Values.frontend.image.tag) }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontend.port }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.frontend.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
