@@ -6,11 +6,14 @@ metadata:
   annotations:
     eks.amazonaws.com/role-arn: {{ .Values.apiService.serviceAccount.roleArn | quote }}
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: {{ include "bookgate.name" . }}-secret
   namespace: {{ include "bookgate.namespace" . }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   refreshInterval: {{ .Values.externalSecrets.refreshInterval }}
   secretStoreRef:
@@ -19,6 +22,7 @@ spec:
   target:
     name: {{ .Values.existingSecret }}
     creationPolicy: Owner
+    deletionPolicy: Retain
   data:
     - secretKey: DATABASE_URL
       remoteRef:
