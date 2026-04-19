@@ -9,7 +9,7 @@ ecr:
 apiService:
   image:
     repository: bookgate/api-service
-    tag: "SET_IMAGE_TAG"
+    tag: "999117f"
     pullPolicy: Always
   replicas: 2
   port: 8000
@@ -33,7 +33,7 @@ apiService:
 chatService:
   image:
     repository: bookgate/chat-service
-    tag: "SET_IMAGE_TAG"
+    tag: "999117f"
     pullPolicy: Always
   replicas: 1
   port: 8001
@@ -50,7 +50,7 @@ chatService:
 frontend:
   image:
     repository: bookgate/frontend
-    tag: "SET_IMAGE_TAG"
+    tag: "999117f"
     pullPolicy: Always
   replicas: 1
   port: 80
