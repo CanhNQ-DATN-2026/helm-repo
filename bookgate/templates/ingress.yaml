@@ -28,7 +28,9 @@ metadata:
 
 spec:
   rules:
-    - host: {{ .Values.ingress.host }}
+    - {{- if .Values.ingress.host }}
+      host: {{ .Values.ingress.host | quote }}
+      {{- end }}
       http:
         paths:
           # Chat service — must be before /api/v1 (more specific prefix first)

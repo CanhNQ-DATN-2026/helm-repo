@@ -85,7 +85,8 @@ existingSecret: "bookgate-secret"
 
 # ── Ingress (AWS Load Balancer Controller) ────────────────────────────────────
 ingress:
-  host: "bookgate.example.com"
+  # Leave empty to expose the app directly through the ALB DNS name without any domain.
+  host: ""
   scheme: "internet-facing"
   idleTimeoutSeconds: 300
   certificateArn: ""
