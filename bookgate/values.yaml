@@ -50,7 +50,7 @@ chatService:
 frontend:
   image:
     repository: bookgate/frontend
-    tag: "9210696"
+    tag: "56337bd"
     pullPolicy: Always
   replicas: 1
   port: 80
