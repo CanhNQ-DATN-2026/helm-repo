@@ -33,7 +33,7 @@ apiService:
 chatService:
   image:
     repository: bookgate/chat-service
-    tag: "999117f"
+    tag: "f8b132e"
     pullPolicy: Always
   replicas: 1
   port: 8001
