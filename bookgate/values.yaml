@@ -9,7 +9,7 @@ ecr:
 apiService:
   image:
     repository: bookgate/api-service
-    tag: "a0dd19e"
+    tag: "f8b132e"
     pullPolicy: Always
   replicas: 2
   port: 8000
