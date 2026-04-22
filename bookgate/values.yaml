@@ -24,7 +24,7 @@ apiService:
       cpu: 500m
       memory: 512Mi
   env:
-    corsOrigins: "https://bookgate.example.com"
+    corsOrigins: "https://bookgate.canhnq.online"
     awsDefaultRegion: "ap-southeast-1"
     s3BucketName: "SET_S3_BUCKET_NAME"  # Terraform output: s3_bucket_name
     adminEmail: "admin@bookgate.com"
@@ -45,7 +45,7 @@ chatService:
       cpu: 500m
       memory: 256Mi
   env:
-    corsOrigins: "https://bookgate.example.com"
+    corsOrigins: "https://bookgate.canhnq.online"
 
 frontend:
   image:
@@ -86,8 +86,31 @@ existingSecret: "bookgate-secret"
 # ── Ingress (AWS Load Balancer Controller) ────────────────────────────────────
 ingress:
   # Leave empty to expose the app directly through the ALB DNS name without any domain.
-  host: ""
+  host: "bookgate.canhnq.online"
   scheme: "internet-facing"
   idleTimeoutSeconds: 300
   certificateArn: ""
   groupName: "bookgate"
+
+# ── External DNS (Route 53 automation) ───────────────────────────────────────
+externalDns:
+  enabled: true
+  image:
+    repository: "registry.k8s.io/external-dns/external-dns"
+    tag: "v0.18.0"
+    pullPolicy: IfNotPresent
+  serviceAccount:
+    name: "external-dns"
+    roleArn: ""  # Terraform output: external_dns_role_arn
+  provider: "aws"
+  policy: "upsert-only"
+  domainFilters:
+    - "canhnq.online"
+  txtOwnerId: "bookgate-eks"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
