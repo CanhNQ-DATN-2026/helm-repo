@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: {{ include "bookgate.name" . }}-api
   namespace: {{ include "bookgate.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   replicas: {{ .Values.apiService.replicas }}
   selector:
@@ -66,6 +68,8 @@ kind: Deployment
 metadata:
   name: {{ include "bookgate.name" . }}-chat
   namespace: {{ include "bookgate.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   replicas: {{ .Values.chatService.replicas }}
   selector:
@@ -117,6 +121,8 @@ kind: Deployment
 metadata:
   name: {{ include "bookgate.name" . }}-frontend
   namespace: {{ include "bookgate.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   replicas: {{ .Values.frontend.replicas }}
   selector:

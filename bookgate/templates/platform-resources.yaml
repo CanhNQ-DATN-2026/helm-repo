@@ -3,8 +3,10 @@ kind: ServiceAccount
 metadata:
   name: {{ .Values.apiService.serviceAccount.name }}
   namespace: {{ include "bookgate.namespace" . }}
+  {{- with .Values.apiService.serviceAccount.roleArn }}
   annotations:
-    eks.amazonaws.com/role-arn: {{ .Values.apiService.serviceAccount.roleArn | quote }}
+    eks.amazonaws.com/role-arn: {{ . | quote }}
+  {{- end }}
 {{- if .Values.externalDns.enabled }}
 ---
 apiVersion: v1
@@ -12,8 +14,10 @@ kind: ServiceAccount
 metadata:
   name: {{ .Values.externalDns.serviceAccount.name }}
   namespace: {{ include "bookgate.namespace" . }}
+  {{- with .Values.externalDns.serviceAccount.roleArn }}
   annotations:
-    eks.amazonaws.com/role-arn: {{ .Values.externalDns.serviceAccount.roleArn | quote }}
+    eks.amazonaws.com/role-arn: {{ . | quote }}
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -83,8 +87,8 @@ metadata:
   name: {{ include "bookgate.name" . }}-secret
   namespace: {{ include "bookgate.namespace" . }}
   annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-delete-policy": before-hook-creation
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   refreshInterval: {{ .Values.externalSecrets.refreshInterval }}
   secretStoreRef:

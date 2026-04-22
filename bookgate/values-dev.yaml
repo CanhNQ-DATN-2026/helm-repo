@@ -1,0 +1,38 @@
+# values-dev.yaml — live dev environment managed by Argo CD.
+
+ecr:
+  registry: "392423995152.dkr.ecr.us-east-1.amazonaws.com"
+
+apiService:
+  image:
+    tag: "4028443"
+  serviceAccount:
+    roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-backend-role"
+  env:
+    corsOrigins: "https://bookgate.canhnq.online"
+    awsDefaultRegion: "us-east-1"
+    s3BucketName: "bookgate-dev-books-392423995152"
+
+chatService:
+  image:
+    tag: "4028443"
+  env:
+    corsOrigins: "https://bookgate.canhnq.online"
+
+frontend:
+  image:
+    tag: "4028443"
+
+externalSecrets:
+  remoteSecretName: "bookgate/dev/app-secrets"
+
+ingress:
+  host: "bookgate.canhnq.online"
+
+externalDns:
+  enabled: true
+  serviceAccount:
+    roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-external-dns-role"
+  domainFilters:
+    - "canhnq.online"
+  txtOwnerId: "bookgate-eks"

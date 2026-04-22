@@ -1,4 +1,4 @@
-# values.yaml — production defaults for EKS deployment.
+# values.yaml — base defaults shared by GitOps environments.
 
 # ── Image registry (ECR) ─────────────────────────────────────────────────────
 # Terraform output: ecr_registry_url
@@ -9,7 +9,7 @@ ecr:
 apiService:
   image:
     repository: bookgate/api-service
-    tag: "4028443"
+    tag: "latest"
     pullPolicy: Always
   replicas: 2
   port: 8000
@@ -24,8 +24,8 @@ apiService:
       cpu: 500m
       memory: 512Mi
   env:
-    corsOrigins: "https://bookgate.canhnq.online"
-    awsDefaultRegion: "ap-southeast-1"
+    corsOrigins: ""
+    awsDefaultRegion: "us-east-1"
     s3BucketName: "SET_S3_BUCKET_NAME"  # Terraform output: s3_bucket_name
     adminEmail: "admin@bookgate.com"
     adminFullName: "System Admin"
@@ -33,7 +33,7 @@ apiService:
 chatService:
   image:
     repository: bookgate/chat-service
-    tag: "4028443"
+    tag: "latest"
     pullPolicy: Always
   replicas: 1
   port: 8001
@@ -45,12 +45,12 @@ chatService:
       cpu: 500m
       memory: 256Mi
   env:
-    corsOrigins: "https://bookgate.canhnq.online"
+    corsOrigins: ""
 
 frontend:
   image:
     repository: bookgate/frontend
-    tag: "4028443"
+    tag: "latest"
     pullPolicy: Always
   replicas: 1
   port: 80
@@ -86,7 +86,7 @@ existingSecret: "bookgate-secret"
 # ── Ingress (AWS Load Balancer Controller) ────────────────────────────────────
 ingress:
   # Leave empty to expose the app directly through the ALB DNS name without any domain.
-  host: "bookgate.canhnq.online"
+  host: ""
   scheme: "internet-facing"
   idleTimeoutSeconds: 300
   certificateArn: ""
@@ -94,7 +94,7 @@ ingress:
 
 # ── External DNS (Route 53 automation) ───────────────────────────────────────
 externalDns:
-  enabled: true
+  enabled: false
   image:
     repository: "registry.k8s.io/external-dns/external-dns"
     tag: "v0.18.0"

@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bookgate-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/CanhNQ-DATN-2026/helm-repo.git
+    targetRevision: main
+    path: bookgate
+    helm:
+      releaseName: bookgate
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: bookgate
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
