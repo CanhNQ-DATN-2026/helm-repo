@@ -15,7 +15,7 @@ apiService:
 
 chatService:
   image:
-    tag: "4028443"
+    tag: "5dcfef1"
   env:
     corsOrigins: "https://bookgate.canhnq.online"
 
