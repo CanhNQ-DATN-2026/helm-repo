@@ -9,7 +9,7 @@ apiService:
   serviceAccount:
     roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-backend-role"
   env:
-    corsOrigins: "https://bookgate.canhnq.online"
+    corsOrigins: "http://bookgate.canhnq.online"
     awsDefaultRegion: "us-east-1"
     s3BucketName: "bookgate-dev-books-392423995152"
 
@@ -17,7 +17,7 @@ chatService:
   image:
     tag: "5dcfef1"
   env:
-    corsOrigins: "https://bookgate.canhnq.online"
+    corsOrigins: "http://bookgate.canhnq.online"
 
 frontend:
   image:
@@ -31,6 +31,7 @@ ingress:
 
 externalDns:
   enabled: true
+  policy: "sync"
   serviceAccount:
     roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-external-dns-role"
   domainFilters:
