@@ -12,6 +12,7 @@ apiService:
     corsOrigins: "http://bookgate.canhnq.online"
     awsDefaultRegion: "us-east-1"
     s3BucketName: "bookgate-dev-books-392423995152"
+  replicas: 1
 
 chatService:
   image:
