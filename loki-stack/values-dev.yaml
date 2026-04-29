@@ -1,0 +1,19 @@
+loki:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 10Gi
+  config:
+    limits_config:
+      retention_period: 168h
+      reject_old_samples: true
+      reject_old_samples_max_age: 168h
+    compactor:
+      retention_enabled: true
+
+promtail:
+  enabled: true
+
+# Grafana is provided by kube-prometheus-stack; disable it here.
+grafana:
+  enabled: false
