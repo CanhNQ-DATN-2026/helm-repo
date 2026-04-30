@@ -39,6 +39,24 @@ grafana:
       url: http://loki-stack.monitoring.svc.cluster.local:3100
       access: proxy
       isDefault: false
+  dashboards:
+    default:
+      k8s-views-global:
+        gnetId: 15760
+        revision: 37
+        datasource: Prometheus
+      k8s-views-namespaces:
+        gnetId: 15757
+        revision: 43
+        datasource: Prometheus
+      k8s-views-workloads:
+        gnetId: 15758
+        revision: 41
+        datasource: Prometheus
+      k8s-views-pods:
+        gnetId: 15759
+        revision: 35
+        datasource: Prometheus
 
 prometheus:
   prometheusSpec:
