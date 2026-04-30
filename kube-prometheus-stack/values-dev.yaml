@@ -87,6 +87,8 @@ alertmanager:
               storage: 2Gi
 
 prometheusOperator:
+  admissionWebhooks:
+    enabled: false
   resources:
     requests:
       cpu: 100m
