@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-sigs.github.io/external-dns
+    chart: external-dns
+    targetRevision: "1.15.2"
+    helm:
+      releaseName: external-dns
+      parameters:
+        - name: serviceAccount.create
+          value: "true"
+        - name: serviceAccount.name
+          value: external-dns
+        - name: serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+          value: arn:aws:iam::392423995152:role/bookgate-eks-external-dns-role
+        - name: provider.name
+          value: aws
+        - name: env[0].name
+          value: AWS_DEFAULT_REGION
+        - name: env[0].value
+          value: us-east-1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: bookgate
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
