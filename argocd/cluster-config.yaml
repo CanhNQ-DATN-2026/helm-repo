@@ -1,23 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: bookgate-dev
+  name: cluster-config
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.io
 spec:
   project: default
   source:
     repoURL: https://github.com/CanhNQ-DATN-2026/helm-repo.git
     targetRevision: main
-    path: bookgate
-    helm:
-      releaseName: bookgate
-      valueFiles:
-        - values-dev.yaml
+    path: cluster-config
   destination:
     server: https://kubernetes.default.svc
-    namespace: bookgate
+    namespace: external-secrets
   syncPolicy:
     automated:
       prune: true
