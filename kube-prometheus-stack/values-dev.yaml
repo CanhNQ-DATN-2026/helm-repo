@@ -11,6 +11,8 @@ kubeProxy:
 
 grafana:
   adminPassword: admin
+  deploymentStrategy:
+    type: Recreate
   ingress:
     enabled: true
     ingressClassName: alb
