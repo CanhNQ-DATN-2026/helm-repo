@@ -87,6 +87,8 @@ alertmanager:
               storage: 2Gi
 
 prometheusOperator:
+  tls:
+    enabled: false
   admissionWebhooks:
     enabled: false
   resources:
