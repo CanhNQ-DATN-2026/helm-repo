@@ -25,8 +25,18 @@ resources:
     cpu: 500m
     memory: 512Mi
 
-# Secrets for aiops-bot are stored in a K8s Secret (aiops-bot-secret)
-# managed outside this chart (manually or via ESO)
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# Choose between manual secret or External Secrets Operator
+externalSecrets:
+  enabled: false
+  # Name of the ClusterSecretStore configured at cluster level
+  clusterSecretStoreName: "aws-secretsmanager"
+  # AWS Secrets Manager secret name
+  remoteSecretName: "bookgate/dev/aiops-bot-secrets"
+  # How often ESO re-syncs
+  refreshInterval: "1h"
+
+# Name of the K8s Secret (created manually or by ESO)
 existingSecret: "aiops-bot-secret"
 
 # Namespace where the bot will be deployed

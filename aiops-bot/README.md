@@ -5,8 +5,9 @@ Standalone Helm chart for the Bookgate AIOps monitoring bot.
 ## Prerequisites
 
 1. **Terraform IRSA Role**: Apply the aiops-bot IAM role from `terraform-infra/irsa.tf`
-2. **Secrets**: Create `aiops-bot-secret` in the target namespace
+2. **Secrets**: Choose between manual K8s Secret or External Secrets Operator
 3. **Cluster**: EKS cluster with OIDC provider configured
+4. **External Secrets Operator** (optional): If using ESO, ensure ClusterSecretStore is configured
 
 ## Installation
 
@@ -14,10 +15,30 @@ Standalone Helm chart for the Bookgate AIOps monitoring bot.
 
 ```bash
 cd ~/repo/CanhNQ-DATN-2026/terraform-infra
+terraform apply
 terraform output aiops_bot_role_arn
 ```
 
-### 2. Create the Secret
+### 2. Create Secrets in AWS Secrets Manager (Recommended)
+
+```bash
+# Create the secret in AWS Secrets Manager
+aws secretsmanager create-secret \
+  --name bookgate/dev/aiops-bot-secrets \
+  --description "AIOps bot credentials" \
+  --secret-string '{
+    "anthropic_api_key": "YOUR_ANTHROPIC_KEY",
+    "telegram_bot_token": "YOUR_TELEGRAM_TOKEN",
+    "telegram_chat_id": "YOUR_CHAT_ID"
+  }' \
+  --region us-east-1
+```
+
+The Helm chart will automatically create an ExternalSecret resource when `externalSecrets.enabled: true` (default in values-dev.yaml).
+
+**Alternative: Manual K8s Secret**
+
+If you prefer not to use External Secrets Operator:
 
 ```bash
 kubectl create secret generic aiops-bot-secret \
@@ -27,35 +48,10 @@ kubectl create secret generic aiops-bot-secret \
   -n bookgate
 ```
 
-Or use External Secrets Operator:
-
+Then disable External Secrets in your values:
 ```yaml
-apiVersion: external-secrets.io/v1beta1
-kind: ExternalSecret
-metadata:
-  name: aiops-bot-secret
-  namespace: bookgate
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: aws-secretsmanager
-    kind: ClusterSecretStore
-  target:
-    name: aiops-bot-secret
-    creationPolicy: Owner
-  data:
-    - secretKey: anthropic_api_key
-      remoteRef:
-        key: bookgate/dev/aiops-bot-secrets
-        property: anthropic_api_key
-    - secretKey: telegram_bot_token
-      remoteRef:
-        key: bookgate/dev/aiops-bot-secrets
-        property: telegram_bot_token
-    - secretKey: telegram_chat_id
-      remoteRef:
-        key: bookgate/dev/aiops-bot-secrets
-        property: telegram_chat_id
+externalSecrets:
+  enabled: false
 ```
 
 ### 3. Update values-dev.yaml
@@ -66,6 +62,10 @@ serviceAccount:
 
 image:
   tag: "latest"  # or specific commit SHA
+
+externalSecrets:
+  enabled: true
+  remoteSecretName: "bookgate/dev/aiops-bot-secrets"
 ```
 
 ### 4. Install the Chart
@@ -104,6 +104,13 @@ kubectl get sa aiops-bot -n bookgate -o yaml | grep role-arn
 # Check RBAC
 kubectl get clusterrole aiops-bot-reader
 kubectl get clusterrolebinding aiops-bot-reader
+
+# Check External Secret (if enabled)
+kubectl get externalsecret aiops-bot-secret -n bookgate
+kubectl describe externalsecret aiops-bot-secret -n bookgate
+
+# Verify the K8s secret was created by ESO
+kubectl get secret aiops-bot-secret -n bookgate
 ```
 
 ## Configuration
@@ -124,6 +131,10 @@ kubectl get clusterrolebinding aiops-bot-reader
 | `resources.requests.memory` | Memory request | `256Mi` |
 | `resources.limits.cpu` | CPU limit | `500m` |
 | `resources.limits.memory` | Memory limit | `512Mi` |
+| `externalSecrets.enabled` | Enable External Secrets Operator | `false` |
+| `externalSecrets.clusterSecretStoreName` | ClusterSecretStore name | `aws-secretsmanager` |
+| `externalSecrets.remoteSecretName` | AWS Secrets Manager secret name | `bookgate/dev/aiops-bot-secrets` |
+| `externalSecrets.refreshInterval` | ESO refresh interval | `1h` |
 | `existingSecret` | Secret name for credentials | `aiops-bot-secret` |
 | `namespace` | Target namespace | `bookgate` |
 
@@ -134,6 +145,7 @@ kubectl get clusterrolebinding aiops-bot-reader
 - **ServiceAccount**: With IRSA annotation for AWS access
 - **ClusterRole**: Read-only access to pods, events, deployments, ArgoCD apps
 - **ClusterRoleBinding**: Binds ServiceAccount to ClusterRole
+- **ExternalSecret** (optional): Syncs secrets from AWS Secrets Manager
 
 ## AWS Permissions (via IRSA)
 

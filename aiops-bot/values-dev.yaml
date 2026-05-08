@@ -8,3 +8,7 @@ image:
 
 serviceAccount:
   roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-aiops-bot-role"
+
+externalSecrets:
+  enabled: true
+  remoteSecretName: "bookgate/dev/aiops-bot-secrets"
