@@ -1,0 +1,33 @@
+# values.yaml — base defaults for aiops-bot
+
+# ── Image registry (ECR) ─────────────────────────────────────────────────────
+ecr:
+  registry: "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com"
+
+# ── AIOps Bot ────────────────────────────────────────────────────────────────
+image:
+  repository: bookgate/aiops-bot
+  tag: "latest"
+  pullPolicy: Always
+
+replicas: 1
+port: 8080
+
+serviceAccount:
+  name: "aiops-bot"
+  roleArn: ""  # Terraform output: aiops_bot_role_arn
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Secrets for aiops-bot are stored in a K8s Secret (aiops-bot-secret)
+# managed outside this chart (manually or via ESO)
+existingSecret: "aiops-bot-secret"
+
+# Namespace where the bot will be deployed
+namespace: "bookgate"
