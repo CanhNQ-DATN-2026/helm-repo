@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kubectl *)",
+      "Bash(curl *)",
+      "Bash(aws *)",
+      "Bash(jq *)",
+      "Bash(date *)",
+      "Bash(echo *)"
+    ],
+    "deny": [
+      "WebSearch",
+      "WebFetch"
+    ]
+  }
+}

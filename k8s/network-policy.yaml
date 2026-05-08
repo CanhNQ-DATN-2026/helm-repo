@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aiops-bot-egress
+  namespace: bookgate
+spec:
+  podSelector:
+    matchLabels:
+      app: aiops-bot
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # Only AlertManager can POST to the webhook
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 8080
+  egress:
+    # Kubernetes API (kubectl)
+    - ports:
+        - port: 443
+          protocol: TCP
+      to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8      # block arbitrary internal — only explicit rules below apply
+    # Prometheus
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 9090   # Prometheus
+        - port: 3100   # Loki
+    # Anthropic API + AWS APIs (RDS, CloudWatch) + Telegram via NAT
+    - ports:
+        - port: 443

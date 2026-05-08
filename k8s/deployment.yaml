@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiops-bot
+  namespace: bookgate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aiops-bot
+  template:
+    metadata:
+      labels:
+        app: aiops-bot
+    spec:
+      serviceAccountName: aiops-bot
+      containers:
+        - name: aiops-bot
+          image: 392423995152.dkr.ecr.us-east-1.amazonaws.com/bookgate/aiops-bot:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aiops-bot-secret
+                  key: anthropic_api_key
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: aiops-bot-secret
+                  key: telegram_bot_token
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aiops-bot-secret
+                  key: telegram_chat_id
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aiops-bot
+  namespace: bookgate
+spec:
+  selector:
+    app: aiops-bot
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aiops-bot
+  namespace: bookgate
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::392423995152:role/bookgate-eks-aiops-role
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aiops-bot-reader
+rules:
+  - apiGroups: [""]
+    resources: [pods, events, nodes, namespaces]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [get, list, watch]
+  - apiGroups: [argoproj.io]
+    resources: [applications]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aiops-bot-reader
+subjects:
+  - kind: ServiceAccount
+    name: aiops-bot
+    namespace: bookgate
+roleRef:
+  kind: ClusterRole
+  name: aiops-bot-reader
+  apiGroup: rbac.authorization.k8s.io
