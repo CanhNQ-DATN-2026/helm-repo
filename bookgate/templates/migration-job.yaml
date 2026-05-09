@@ -19,28 +19,7 @@ spec:
         - name: migrate
           image: {{ include "bookgate.image" (dict "registry" .Values.ecr.registry "repo" .Values.apiService.image.repository "tag" .Values.apiService.image.tag) }}
           imagePullPolicy: {{ .Values.apiService.image.pullPolicy }}
-          command: ["/bin/sh", "-lc"]
-          args:
-            - |
-              set -e
-
-              echo "==> Waiting for Postgres..."
-              until python -c "import psycopg2, os; psycopg2.connect(os.environ['DATABASE_URL']).close()" 2>/dev/null; do
-                sleep 2
-              done
-              echo "==> Postgres ready."
-
-              original_database_url="$DATABASE_URL"
-
-              echo "==> Running Alembic migrations..."
-              export DATABASE_URL="$(printf '%s' "$original_database_url" | sed 's/%/%%/g')"
-              alembic upgrade head
-
-              echo "==> Bootstrapping admin account..."
-              export DATABASE_URL="$original_database_url"
-              python -m scripts.seed
-
-              echo "==> Migration complete."
+          command: ["/app/scripts/migrate.sh"]
           env:
             - name: DATABASE_URL
               valueFrom:
