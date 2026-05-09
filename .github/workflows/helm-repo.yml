@@ -28,7 +28,9 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Helm Lint
-        run: helm lint bookgate/
+        run: |
+          helm lint bookgate/
+          helm lint aiops-bot/
 
       - name: Render Helm Templates
         run: |
@@ -45,5 +47,15 @@ jobs:
             --set ingress.host=bookgate.example.com \
             > /tmp/bookgate-rendered.yaml
 
+          helm template aiops-bot aiops-bot/ \
+            --set ecr.registry=392423995152.dkr.ecr.us-east-1.amazonaws.com \
+            --set image.tag=test1234 \
+            --set serviceAccount.roleArn=arn:aws:iam::392423995152:role/bookgate-eks-aiops-bot-role \
+            --set bedrock.roleArn=arn:aws:iam::400071840696:role/bot-assume-role \
+            --set externalSecrets.remoteSecretName=bookgate/dev/aiops-bot-secrets \
+            > /tmp/aiops-bot-rendered.yaml
+
       - name: Verify Rendered Output Is Not Empty
-        run: test -s /tmp/bookgate-rendered.yaml
+        run: |
+          test -s /tmp/bookgate-rendered.yaml
+          test -s /tmp/aiops-bot-rendered.yaml

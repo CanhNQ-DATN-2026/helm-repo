@@ -25,11 +25,12 @@ spec:
               containerPort: {{ .Values.port }}
               protocol: TCP
           env:
-            - name: ANTHROPIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.existingSecret }}
-                  key: anthropic_api_key
+            - name: CLAUDE_CODE_USE_BEDROCK
+              value: "1"
+            - name: AWS_BEDROCK_ROLE_ARN
+              value: {{ .Values.bedrock.roleArn | quote }}
+            - name: AWS_BEDROCK_REGION
+              value: {{ .Values.bedrock.region | quote }}
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
                 secretKeyRef:

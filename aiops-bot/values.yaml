@@ -17,6 +17,11 @@ serviceAccount:
   name: "aiops-bot"
   roleArn: ""  # Terraform output: aiops_bot_role_arn
 
+# ── Bedrock ───────────────────────────────────────────────────────────────────
+bedrock:
+  roleArn: ""   # ARN of the role in Account B that has Bedrock access
+  region: "us-east-1"
+
 resources:
   requests:
     cpu: 100m
@@ -26,6 +31,7 @@ resources:
     memory: 512Mi
 
 # ── Secrets ──────────────────────────────────────────────────────────────────
+# Only Telegram credentials are stored here; Bedrock access is via IRSA.
 # Choose between manual secret or External Secrets Operator
 externalSecrets:
   enabled: false

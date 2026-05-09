@@ -9,6 +9,10 @@ image:
 serviceAccount:
   roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-aiops-bot-role"
 
+bedrock:
+  roleArn: "arn:aws:iam::400071840696:role/bot-assume-role"
+  region: "us-east-1"
+
 externalSecrets:
   enabled: true
   remoteSecretName: "bookgate/dev/aiops-bot-secrets"
