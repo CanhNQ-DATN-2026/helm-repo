@@ -97,7 +97,7 @@ jobs:
           image_tag="${GITHUB_SHA::7}"
 
           update_values() {
-            perl -pi -e 's/(^\s+tag:\s+\")([^\"]+)(\")/\1'"${image_tag}"'\3/' aiops-bot/values-dev.yaml
+            perl -pi -e 's/(^\s+tag:\s+\")([^\"]+)(\")/${1}'"${image_tag}"'${3}/' aiops-bot/values-dev.yaml
           }
 
           update_values
