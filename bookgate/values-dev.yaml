@@ -22,7 +22,7 @@ chatService:
 
 frontend:
   image:
-    tag: "5dcfef1"
+    tag: "ef5eba4"
 
 externalSecrets:
   remoteSecretName: "bookgate/dev/app-secrets"
