@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "bookgate.name" . }}-migrate-{{ printf "%v" .Values.apiService.image.tag | replace "." "-" | replace "_" "-" | lower | trunc 40 | trimSuffix "-" }}
+  namespace: {{ include "bookgate.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: {{ include "bookgate.name" . }}-migrate
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ .Values.apiService.serviceAccount.name }}
+      containers:
+        - name: migrate
+          image: {{ include "bookgate.image" (dict "registry" .Values.ecr.registry "repo" .Values.apiService.image.repository "tag" .Values.apiService.image.tag) }}
+          imagePullPolicy: {{ .Values.apiService.image.pullPolicy }}
+          command: ["/app/scripts/migrate.sh"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: SECRET_KEY
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: ADMIN_PASSWORD
+            - name: S3_BUCKET_NAME
+              value: {{ .Values.apiService.env.s3BucketName | quote }}
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.apiService.env.awsDefaultRegion | quote }}
+            - name: ADMIN_EMAIL
+              value: {{ .Values.apiService.env.adminEmail | quote }}
+            - name: ADMIN_FULL_NAME
+              value: {{ .Values.apiService.env.adminFullName | quote }}
+            - name: CORS_ORIGINS
+              value: {{ .Values.apiService.env.corsOrigins | quote }}
