@@ -50,10 +50,18 @@ async def send(text: str, chat_id: str = "") -> None:
     chunks = [text[i:i + MAX_LEN] for i in range(0, len(text), MAX_LEN)]
     async with httpx.AsyncClient(timeout=10) as client:
         for chunk in chunks:
-            await client.post(
+            resp = await client.post(
                 f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
                 json={"chat_id": target, "text": chunk, "parse_mode": "Markdown"},
             )
+            if not resp.json().get("ok"):
+                logger.warning("[telegram] sendMessage failed (Markdown): %s — retrying as plain text", resp.text)
+                resp = await client.post(
+                    f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
+                    json={"chat_id": target, "text": chunk},
+                )
+                if not resp.json().get("ok"):
+                    logger.error("[telegram] sendMessage failed: %s", resp.text)
 
 
 async def send_analysis(alert_name: str, severity: str, analysis: str) -> None:
