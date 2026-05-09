@@ -10,7 +10,7 @@ metadata:
     alb.ingress.kubernetes.io/scheme: {{ .Values.ingress.scheme }}
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/group.name: {{ .Values.ingress.groupName }}
-    {{- if and .Values.externalDns.enabled .Values.ingress.host }}
+    {{- if .Values.ingress.host }}
     external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingress.host | quote }}
     {{- end }}
 

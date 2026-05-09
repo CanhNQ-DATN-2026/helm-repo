@@ -31,7 +31,7 @@ ingress:
   host: "bookgate.canhnq.online"
 
 externalDns:
-  enabled: true
+  enabled: false
   policy: "sync"
   serviceAccount:
     roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-external-dns-role"
