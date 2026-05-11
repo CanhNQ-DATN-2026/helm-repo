@@ -83,6 +83,12 @@ externalSecrets:
 # Name of the K8s Secret that ESO creates. Referenced by all deployments.
 existingSecret: "bookgate-secret"
 
+# ── Alerting ─────────────────────────────────────────────────────────────────
+prometheusRule:
+  enabled: false
+  # Memory usage threshold to fire HighMemoryUsage (0.0–1.0)
+  memoryThreshold: "0.85"
+
 # ── Ingress (AWS Load Balancer Controller) ────────────────────────────────────
 ingress:
   # Leave empty to expose the app directly through the ALB DNS name without any domain.

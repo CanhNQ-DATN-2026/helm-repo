@@ -18,6 +18,9 @@ spec:
     - repoURL: https://github.com/CanhNQ-DATN-2026/helm-repo.git
       targetRevision: main
       ref: values
+    - repoURL: https://github.com/CanhNQ-DATN-2026/helm-repo.git
+      targetRevision: main
+      path: kube-prometheus-stack/manifests
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

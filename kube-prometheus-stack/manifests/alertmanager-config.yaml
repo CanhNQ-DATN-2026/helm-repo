@@ -1,0 +1,58 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  target:
+    name: alertmanager-config
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      data:
+        # AlertManager reads this key when alertmanagerSpec.alertmanagerConfigSecret is set.
+        # ESO renders {{ .varName }} with secret values; AlertManager {{ }} are escaped as {{ "{{" }}.
+        alertmanager.yaml: |
+          global:
+            resolve_timeout: 5m
+          route:
+            group_by: ['alertname', 'namespace']
+            group_wait: 30s
+            group_interval: 5m
+            repeat_interval: 12h
+            receiver: aiops-bot
+            routes:
+              - matchers:
+                  - alertname = "Watchdog"
+                receiver: null-receiver
+          receivers:
+            - name: aiops-bot
+              telegram_configs:
+                - bot_token: "{{ .telegram_bot_token }}"
+                  chat_id: {{ .telegram_chat_id }}
+                  parse_mode: Markdown
+                  send_resolved: false
+                  message: |
+                    🚨 *{{ "{{" }} .GroupLabels.alertname {{ "}}" }}*
+                    Severity: {{ "{{" }} .CommonLabels.severity {{ "}}" }}
+                    {{ "{{" }} range .Alerts {{ "}}" }}• {{ "{{" }} .Annotations.summary {{ "}}" }}
+                    {{ "{{" }} end {{ "}}" }}
+              webhook_configs:
+                - url: 'http://aiops-bot.bookgate.svc:8080/webhook/alertmanager'
+                  send_resolved: false
+            - name: null-receiver
+  data:
+    - secretKey: telegram_bot_token
+      remoteRef:
+        key: bookgate/dev/aiops-bot-secrets
+        property: telegram_bot_token
+    - secretKey: telegram_chat_id
+      remoteRef:
+        key: bookgate/dev/aiops-bot-secrets
+        property: telegram_chat_id

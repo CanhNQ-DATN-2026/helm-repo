@@ -275,6 +275,9 @@ prometheus:
 
 alertmanager:
   alertmanagerSpec:
+    # Full config (telegram + webhook) is rendered by ESO into this secret.
+    # See kube-prometheus-stack/manifests/alertmanager-config.yaml.
+    alertmanagerConfigSecret: alertmanager-config
     replicas: 1
     storage:
       volumeClaimTemplate:
