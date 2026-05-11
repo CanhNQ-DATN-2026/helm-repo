@@ -1,0 +1,76 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "bookgate.name" . }}
+  namespace: {{ include "bookgate.namespace" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "bookgate.name" . }}
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: bookgate.pods
+      rules:
+        - alert: BookgatePodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{
+              namespace="{{ include "bookgate.namespace" . }}"
+            }[15m]) > 3
+          for: 0m
+          labels:
+            severity: critical
+            namespace: {{ include "bookgate.namespace" . }}
+          annotations:
+            summary: "Pod {{ "{{" }} $labels.pod {{ "}}" }} is crash looping"
+            description: "Container {{ "{{" }} $labels.container {{ "}}" }} in pod {{ "{{" }} $labels.pod {{ "}}" }} restarted {{ "{{" }} $value | printf \"%.0f\" {{ "}}" }} times in the last 15 minutes."
+
+        - alert: BookgatePodNotReady
+          expr: |
+            kube_pod_status_ready{
+              namespace="{{ include "bookgate.namespace" . }}",
+              condition="true"
+            } == 0
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ include "bookgate.namespace" . }}
+          annotations:
+            summary: "Pod {{ "{{" }} $labels.pod {{ "}}" }} is not ready"
+            description: "Pod {{ "{{" }} $labels.pod {{ "}}" }} has been in a non-ready state for more than 5 minutes."
+
+        - alert: BookgateHighMemoryUsage
+          expr: |
+            (
+              container_memory_working_set_bytes{
+                namespace="{{ include "bookgate.namespace" . }}",
+                container!="",
+                container!="POD"
+              }
+              /
+              container_spec_memory_limit_bytes{
+                namespace="{{ include "bookgate.namespace" . }}",
+                container!="",
+                container!="POD"
+              } > 0
+            ) > {{ .Values.prometheusRule.memoryThreshold }}
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ include "bookgate.namespace" . }}
+          annotations:
+            summary: "High memory usage in {{ "{{" }} $labels.container {{ "}}" }}"
+            description: "Container {{ "{{" }} $labels.container {{ "}}" }} in pod {{ "{{" }} $labels.pod {{ "}}" }} is using {{ "{{" }} $value | humanizePercentage {{ "}}" }} of its memory limit."
+
+        - alert: BookgateDeploymentUnavailable
+          expr: |
+            kube_deployment_spec_replicas{namespace="{{ include "bookgate.namespace" . }}"}
+            !=
+            kube_deployment_status_available_replicas{namespace="{{ include "bookgate.namespace" . }}"}
+          for: 5m
+          labels:
+            severity: critical
+            namespace: {{ include "bookgate.namespace" . }}
+          annotations:
+            summary: "Deployment {{ "{{" }} $labels.deployment {{ "}}" }} has unavailable replicas"
+            description: "Deployment {{ "{{" }} $labels.deployment {{ "}}" }} has {{ "{{" }} $value {{ "}}" }} unavailable replicas for more than 5 minutes."
+{{- end }}
