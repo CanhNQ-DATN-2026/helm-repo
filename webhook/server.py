@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from fastapi import APIRouter, BackgroundTasks, Request
-from bot.telegram import send_analysis
+from bot.telegram import send_alert_notification, send_analysis
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -30,6 +30,9 @@ async def _process(alert: dict) -> None:
     summary = annotations.get("summary", "")
     description = annotations.get("description", "")
 
+    # Send the alert notification first and capture its message_id for threading
+    notification_id = await send_alert_notification(alert_name, severity, summary)
+
     prompt = (
         f"Alert firing — use the /investigate-alert skill.\n\n"
         f"Alert: {alert_name}\n"
@@ -43,10 +46,10 @@ async def _process(alert: dict) -> None:
     logger.info(f"Analyzing alert: {alert_name}")
     try:
         analysis = await _run_claude(prompt)
-        await send_analysis(alert_name, severity, analysis)
+        await send_analysis(alert_name, severity, analysis, reply_to_message_id=notification_id)
     except Exception as e:
         logger.exception(f"Failed to analyze {alert_name}")
-        await send_analysis(alert_name, severity, f"Analysis failed: {e}")
+        await send_analysis(alert_name, severity, f"Analysis failed: {e}", reply_to_message_id=notification_id)
 
 
 async def _run_claude(prompt: str) -> str:

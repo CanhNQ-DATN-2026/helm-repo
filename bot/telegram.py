@@ -41,32 +41,44 @@ def clear_history(chat_id: str) -> None:
     _history[chat_id].clear()
 
 
-async def send(text: str, chat_id: str = "") -> None:
+async def send(text: str, chat_id: str = "", reply_to_message_id: int | None = None) -> int | None:
+    """Send a message and return the message_id of the first chunk."""
     target = chat_id or CHAT_ID
     if not BOT_TOKEN or not target:
         logger.info("[telegram disabled] output:\n%s", text)
-        return
+        return None
 
     chunks = [text[i:i + MAX_LEN] for i in range(0, len(text), MAX_LEN)]
+    first_message_id = None
     async with httpx.AsyncClient(timeout=10) as client:
-        for chunk in chunks:
-            resp = await client.post(
-                f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
-                json={"chat_id": target, "text": chunk, "parse_mode": "Markdown"},
-            )
-            if not resp.json().get("ok"):
+        for i, chunk in enumerate(chunks):
+            body: dict = {"chat_id": target, "text": chunk, "parse_mode": "Markdown"}
+            if reply_to_message_id and i == 0:
+                body["reply_to_message_id"] = reply_to_message_id
+            resp = await client.post(f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage", json=body)
+            data = resp.json()
+            if not data.get("ok"):
                 logger.warning("[telegram] sendMessage failed (Markdown): %s — retrying as plain text", resp.text)
-                resp = await client.post(
-                    f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
-                    json={"chat_id": target, "text": chunk},
-                )
-                if not resp.json().get("ok"):
+                body.pop("parse_mode", None)
+                resp = await client.post(f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage", json=body)
+                data = resp.json()
+                if not data.get("ok"):
                     logger.error("[telegram] sendMessage failed: %s", resp.text)
+            if first_message_id is None:
+                first_message_id = data.get("result", {}).get("message_id")
+    return first_message_id
 
 
-async def send_analysis(alert_name: str, severity: str, analysis: str) -> None:
+async def send_alert_notification(alert_name: str, severity: str, summary: str, chat_id: str = "") -> int | None:
+    """Send the initial alert notification and return its message_id."""
     icon = SEVERITY_ICON.get(severity.lower(), "⚪")
-    await send(f"{icon} *{alert_name}*\n\n{analysis}")
+    text = f"{icon} *{alert_name}*\n_{summary}_\n\n🔍 Investigating..."
+    return await send(text, chat_id)
+
+
+async def send_analysis(alert_name: str, severity: str, analysis: str, reply_to_message_id: int | None = None) -> None:
+    icon = SEVERITY_ICON.get(severity.lower(), "⚪")
+    await send(f"{icon} *{alert_name}* — Analysis\n\n{analysis}", reply_to_message_id=reply_to_message_id)
 
 
 async def _send_typing(chat_id: str, stop_event: asyncio.Event) -> None:
