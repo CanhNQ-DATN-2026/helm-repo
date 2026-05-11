@@ -30,10 +30,6 @@ externalSecrets:
 prometheusRule:
   enabled: true
 
-# Your Telegram group/channel chat ID (get it from @userinfobot or check aiops-bot-secrets)
-telegram:
-  chatId: 0  # TODO: replace with actual chat ID
-
 ingress:
   host: "bookgate.canhnq.online"
 

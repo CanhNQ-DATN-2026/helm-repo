@@ -89,12 +89,6 @@ prometheusRule:
   # Memory usage threshold to fire HighMemoryUsage (0.0–1.0)
   memoryThreshold: "0.85"
 
-# Telegram chat ID for AlertmanagerConfig native notifications.
-# Not a secret — set this to your group/channel chat ID (negative integer for groups).
-# AlertmanagerConfig is only rendered when this is non-zero.
-telegram:
-  chatId: 0
-
 # ── Ingress (AWS Load Balancer Controller) ────────────────────────────────────
 ingress:
   # Leave empty to expose the app directly through the ALB DNS name without any domain.
