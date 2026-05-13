@@ -69,16 +69,6 @@ async def send(text: str, chat_id: str = "", reply_to_message_id: int | None = N
     return first_message_id
 
 
-async def send_alert_notification(alert_name: str, severity: str, summary: str, chat_id: str = "") -> int | None:
-    """Send the initial alert notification and return its message_id."""
-    icon = SEVERITY_ICON.get(severity.lower(), "⚪")
-    text = f"{icon} *{alert_name}*\n_{summary}_\n\n🔍 Investigating..."
-    return await send(text, chat_id)
-
-
-async def send_analysis(alert_name: str, severity: str, analysis: str, reply_to_message_id: int | None = None) -> None:
-    icon = SEVERITY_ICON.get(severity.lower(), "⚪")
-    await send(f"{icon} *{alert_name}* — Analysis\n\n{analysis}", reply_to_message_id=reply_to_message_id)
 
 
 async def _send_typing(chat_id: str, stop_event: asyncio.Event) -> None:

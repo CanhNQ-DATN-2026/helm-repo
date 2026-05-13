@@ -2,13 +2,12 @@ import asyncio
 import logging
 import uvicorn
 from fastapi import FastAPI
-from webhook.server import router, _run_claude
+from webhook.server import _run_claude
 from bot.telegram import start_polling
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 app = FastAPI(title="AIOps Bot")
-app.include_router(router)
 
 
 @app.get("/health")
