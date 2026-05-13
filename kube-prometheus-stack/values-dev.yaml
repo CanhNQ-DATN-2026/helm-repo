@@ -38,9 +38,12 @@ grafana:
   additionalDataSources:
     - name: Loki
       type: loki
+      uid: loki
       url: http://loki-stack.monitoring.svc.cluster.local:3100
       access: proxy
       isDefault: false
+      jsonData:
+        manageAlerts: false
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1

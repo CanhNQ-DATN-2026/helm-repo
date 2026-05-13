@@ -15,5 +15,9 @@ promtail:
   enabled: true
 
 # Grafana is provided by kube-prometheus-stack; disable it here.
+# Datasources are also managed there to keep a single Loki datasource.
 grafana:
   enabled: false
+  sidecar:
+    datasources:
+      enabled: false
