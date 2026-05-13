@@ -29,11 +29,17 @@ spec:
             group_wait: 30s
             group_interval: 5m
             repeat_interval: 12h
-            receiver: aiops-bot
+            receiver: null-receiver
             routes:
               - matchers:
                   - alertname = "Watchdog"
                 receiver: null-receiver
+              - matchers:
+                  - alertname = "InfoInhibitor"
+                receiver: null-receiver
+              - matchers:
+                  - severity =~ "warning|critical"
+                receiver: aiops-bot
           receivers:
             - name: aiops-bot
               telegram_configs:
