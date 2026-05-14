@@ -5,7 +5,7 @@ ecr:
 
 apiService:
   image:
-    tag: "b050989"
+    tag: "8dea861"
   serviceAccount:
     roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-backend-role"
   env:
