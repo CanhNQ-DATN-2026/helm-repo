@@ -4,7 +4,7 @@ ecr:
   registry: "392423995152.dkr.ecr.us-east-1.amazonaws.com"
 
 image:
-  tag: "ff61e0f"
+  tag: "22dfa68"
 
 serviceAccount:
   roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-aiops-bot-role"
