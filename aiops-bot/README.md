@@ -34,7 +34,7 @@ aws secretsmanager create-secret \
   --region us-east-1
 ```
 
-The Helm chart will automatically create an ExternalSecret resource when `externalSecrets.enabled: true` (default in values-dev.yaml).
+The Helm chart will automatically create an ExternalSecret resource when `externalSecrets.enabled: true`.
 
 **Alternative: Manual K8s Secret**
 
@@ -54,7 +54,7 @@ externalSecrets:
   enabled: false
 ```
 
-### 3. Update values-dev.yaml
+### 3. Update values.yaml
 
 ```yaml
 serviceAccount:
@@ -84,14 +84,12 @@ cd ~/repo/CanhNQ-DATN-2026/helm-repo
 # Install
 helm install aiops-bot ./aiops-bot \
   -n bookgate \
-  -f aiops-bot/values.yaml \
-  -f aiops-bot/values-dev.yaml
+  -f aiops-bot/values.yaml
 
 # Upgrade
 helm upgrade aiops-bot ./aiops-bot \
   -n bookgate \
-  -f aiops-bot/values.yaml \
-  -f aiops-bot/values-dev.yaml
+  -f aiops-bot/values.yaml
 ```
 
 ## Verification

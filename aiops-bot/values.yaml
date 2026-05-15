@@ -1,13 +1,13 @@
-# values.yaml — base defaults for aiops-bot
+# values.yaml — aiops-bot live configuration
 
 # ── Image registry (ECR) ─────────────────────────────────────────────────────
 ecr:
-  registry: "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com"
+  registry: "392423995152.dkr.ecr.us-east-1.amazonaws.com"
 
 # ── AIOps Bot ────────────────────────────────────────────────────────────────
 image:
   repository: bookgate/aiops-bot
-  tag: "latest"
+  tag: "6c2affd"
   pullPolicy: Always
 
 replicas: 1
@@ -15,11 +15,11 @@ port: 8080
 
 serviceAccount:
   name: "aiops-bot"
-  roleArn: ""  # Terraform output: aiops_bot_role_arn
+  roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-aiops-bot-role"
 
 # ── Bedrock ───────────────────────────────────────────────────────────────────
 bedrock:
-  roleArn: ""   # ARN of the role in Account B that has Bedrock access
+  roleArn: "arn:aws:iam::400071840696:role/bot-assume-role"
   region: "us-east-1"
 
 claude:
@@ -43,7 +43,7 @@ resources:
 # Only Telegram credentials are stored here; Bedrock access is via IRSA.
 # Choose between manual secret or External Secrets Operator
 externalSecrets:
-  enabled: false
+  enabled: true
   # Name of the ClusterSecretStore configured at cluster level
   clusterSecretStoreName: "aws-secretsmanager"
   # AWS Secrets Manager secret name

@@ -14,7 +14,7 @@ spec:
     helm:
       releaseName: aiops-bot
       valueFiles:
-        - values-dev.yaml
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: aiops-bot
