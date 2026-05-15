@@ -1,0 +1,20 @@
+{{- if .Values.telegram.allowlist.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aiops-bot.name" . }}-telegram-allowlist
+  namespace: {{ include "aiops-bot.namespace" . }}
+  labels:
+    {{- include "aiops-bot.labels" . | nindent 4 }}
+data:
+  telegram-allowlist.txt: |
+    [chat_ids]
+    {{- range .Values.telegram.allowlist.chatIds }}
+    {{ . }}
+    {{- end }}
+
+    [user_ids]
+    {{- range .Values.telegram.allowlist.userIds }}
+    {{ . }}
+    {{- end }}
+{{- end }}

@@ -31,6 +31,10 @@ spec:
               value: {{ .Values.bedrock.roleArn | quote }}
             - name: AWS_BEDROCK_REGION
               value: {{ .Values.bedrock.region | quote }}
+            - name: CLAUDE_OUTPUT_TOKEN_LIMIT
+              value: {{ .Values.claude.outputTokenLimit | quote }}
+            - name: TELEGRAM_ALLOWLIST_PATH
+              value: "/app/config/telegram-allowlist.txt"
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -49,3 +53,16 @@ spec:
             periodSeconds: 30
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.telegram.allowlist.enabled }}
+          volumeMounts:
+            - name: telegram-allowlist
+              mountPath: /app/config/telegram-allowlist.txt
+              subPath: telegram-allowlist.txt
+              readOnly: true
+          {{- end }}
+      {{- if .Values.telegram.allowlist.enabled }}
+      volumes:
+        - name: telegram-allowlist
+          configMap:
+            name: {{ include "aiops-bot.name" . }}-telegram-allowlist
+      {{- end }}

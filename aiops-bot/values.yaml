@@ -22,6 +22,15 @@ bedrock:
   roleArn: ""   # ARN of the role in Account B that has Bedrock access
   region: "us-east-1"
 
+claude:
+  outputTokenLimit: 1200
+
+telegram:
+  allowlist:
+    enabled: true
+    chatIds: []
+    userIds: []
+
 resources:
   requests:
     cpu: 100m
