@@ -27,7 +27,7 @@ aws secretsmanager get-secret-value \
 ## 3. Kiểm tra image tag trong repo Helm
 
 ```bash
-sed -n '1,220p' /Users/nguyenquangcanh/atlantic/helm-charts/bookgate/values-dev.yaml
+sed -n '1,220p' /Users/nguyenquangcanh/atlantic/helm-charts/bookgate/values.yaml
 ```
 
 Tag hiện tại phải tồn tại trong cả 3 repo ECR:
@@ -79,7 +79,7 @@ Kỳ vọng:
 
 Khi app repo build image tag mới:
 
-1. sửa `bookgate/values-dev.yaml`
+1. sửa `bookgate/values.yaml`
 2. commit
 3. push repo `helm-charts`
 4. Argo CD tự sync
@@ -88,7 +88,7 @@ Ví dụ commit:
 
 ```bash
 cd /Users/nguyenquangcanh/atlantic/helm-charts
-git add bookgate/values-dev.yaml
+git add bookgate/values.yaml
 git commit -m "Bump Bookgate dev image tag"
 git push origin main
 ```

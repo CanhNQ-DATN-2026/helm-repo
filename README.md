@@ -5,7 +5,7 @@ Repo này là source of truth cho deploy Bookgate bằng Argo CD.
 Hiện tại repo chứa:
 - chart ứng dụng `bookgate/`
 - values base `bookgate/values.yaml`
-- values môi trường dev `bookgate/values-dev.yaml`
+- values live `bookgate/values.yaml`
 - manifest Argo CD `argocd/bookgate-dev.yaml`
 
 URL mục tiêu hiện tại:
@@ -22,7 +22,7 @@ Luồng chuẩn:
    - `ClusterSecretStore/aws-secretsmanager`
    - Argo CD
 3. Repo này giữ toàn bộ desired state của app.
-4. Argo CD đọc `argocd/bookgate-dev.yaml`, render chart `bookgate/` với `values-dev.yaml`, rồi sync vào namespace `bookgate`.
+4. Argo CD đọc `argocd/bookgate-dev.yaml`, render chart `bookgate/` với `values.yaml`, rồi sync vào namespace `bookgate`.
 
 Điểm quan trọng:
 - Không còn phụ thuộc vào `helm upgrade --set ...` để giữ cấu hình môi trường.
@@ -47,7 +47,7 @@ Những thứ phải có trước khi apply Argo CD Application:
 argocd/bookgate-dev.yaml
 bookgate/Chart.yaml
 bookgate/values.yaml
-bookgate/values-dev.yaml
+bookgate/values.yaml
 bookgate/templates/
 ```
 
@@ -58,7 +58,7 @@ bookgate/templates/
 - không chứa cấu hình môi trường thật
 - không nên sửa theo từng release
 
-`bookgate/values-dev.yaml`
+`bookgate/values.yaml`
 - desired state thật của môi trường dev hiện tại
 - đang chứa:
   - ECR registry
@@ -86,7 +86,7 @@ Manifest sẵn có:
 Manifest này:
 - trỏ tới repo `https://github.com/CanhNQ-DATN-2026/helm-repo.git`
 - dùng chart path `bookgate`
-- dùng values file `values-dev.yaml`
+- dùng values file `values.yaml`
 - đặt release name là `bookgate`
 - bật:
   - `automated.prune=true`
@@ -178,7 +178,7 @@ Kỳ vọng:
 
 Khi app repo build ra image tag mới:
 
-1. sửa tag trong [bookgate/values-dev.yaml](/Users/nguyenquangcanh/atlantic/helm-charts/bookgate/values-dev.yaml)
+1. sửa tag trong [bookgate/values.yaml](/Users/nguyenquangcanh/atlantic/helm-charts/bookgate/values.yaml)
 2. commit
 3. push lên remote
 4. Argo CD tự sync hoặc sync tay
@@ -235,8 +235,8 @@ Nếu cần render để debug:
 
 ```bash
 cd /Users/nguyenquangcanh/atlantic/helm-charts
-helm lint ./bookgate -f ./bookgate/values-dev.yaml
-helm template bookgate ./bookgate -n bookgate -f ./bookgate/values-dev.yaml
+helm lint ./bookgate -f ./bookgate/values.yaml
+helm template bookgate ./bookgate -n bookgate -f ./bookgate/values.yaml
 ```
 
 Nếu cần deploy tay tạm thời:
@@ -245,7 +245,7 @@ Nếu cần deploy tay tạm thời:
 helm upgrade --install bookgate ./bookgate \
   --namespace bookgate \
   --create-namespace \
-  -f ./bookgate/values-dev.yaml \
+  -f ./bookgate/values.yaml \
   --wait \
   --timeout 10m
 ```
@@ -261,8 +261,8 @@ helm upgrade --install bookgate ./bookgate \
 - kiểm tra IAM role của ESO còn trust đúng OIDC hiện tại
 
 `external-dns` không tạo record
-- kiểm tra `externalDns.enabled=true` trong `values-dev.yaml`
-- kiểm tra role ARN trong `values-dev.yaml`
+- kiểm tra `externalDns.enabled=true` trong `values.yaml`
+- kiểm tra role ARN trong `values.yaml`
 - kiểm tra log `deploy/bookgate-external-dns`
 
 `InvalidImageName`

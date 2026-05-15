@@ -1,21 +1,17 @@
-# values.yaml — base defaults shared by GitOps environments.
+# values.yaml — live configuration managed by Argo CD.
 
-# ── Image registry (ECR) ─────────────────────────────────────────────────────
-# Terraform output: ecr_registry_url
 ecr:
-  registry: "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com"
-
-# ── Service images — update tags manually on each release ────────────────────
+  registry: 392423995152.dkr.ecr.us-east-1.amazonaws.com
 apiService:
   image:
     repository: bookgate/api-service
-    tag: "latest"
+    tag: 0faacc2
     pullPolicy: Always
-  replicas: 2
+  replicas: 1
   port: 8000
   serviceAccount:
-    name: "backend-sa"
-    roleArn: ""  # Terraform output: backend_role_arn
+    name: backend-sa
+    roleArn: arn:aws:iam::392423995152:role/bookgate-eks-backend-role
   resources:
     requests:
       cpu: 250m
@@ -24,16 +20,15 @@ apiService:
       cpu: 500m
       memory: 512Mi
   env:
-    corsOrigins: ""
-    awsDefaultRegion: "us-east-1"
-    s3BucketName: "SET_S3_BUCKET_NAME"  # Terraform output: s3_bucket_name
-    adminEmail: "admin@bookgate.com"
-    adminFullName: "System Admin"
-
+    corsOrigins: http://bookgate.canhnq.online
+    awsDefaultRegion: us-east-1
+    s3BucketName: bookgate-dev-books-392423995152
+    adminEmail: admin@bookgate.com
+    adminFullName: System Admin
 chatService:
   image:
     repository: bookgate/chat-service
-    tag: "latest"
+    tag: ef5eba4
     pullPolicy: Always
   replicas: 1
   port: 8001
@@ -45,12 +40,11 @@ chatService:
       cpu: 500m
       memory: 256Mi
   env:
-    corsOrigins: ""
-
+    corsOrigins: http://bookgate.canhnq.online
 frontend:
   image:
     repository: bookgate/frontend
-    tag: "8be4f19"
+    tag: ef5eba4
     pullPolicy: Always
   replicas: 1
   port: 80
@@ -61,58 +55,34 @@ frontend:
     limits:
       cpu: 200m
       memory: 128Mi
-
-# ── Secrets — External Secrets Operator ──────────────────────────────────────
-# ESO reads the ExternalSecret below and creates bookgate-secret in this namespace.
-# The Helm release assumes bookgate-secret already exists (ESO has synced it)
-# before app pods start. Migration must also be run after sync is confirmed.
-#
-# Terraform creates the SM secret shell; the operator populates it once:
-#   aws secretsmanager put-secret-value \
-#     --secret-id bookgate/dev/app-secrets \
-#     --secret-string '{"DATABASE_URL":"...","SECRET_KEY":"...","ADMIN_PASSWORD":"...","OPENAI_API_KEY":"..."}'
 externalSecrets:
-  # Name of the ClusterSecretStore configured at cluster level (not by this chart).
-  clusterSecretStoreName: "aws-secretsmanager"
-  # SM secret name — matches Terraform: "${project_name}/${environment}/app-secrets"
-  # Change to "bookgate/prod/app-secrets" for production environment.
-  remoteSecretName: "bookgate/dev/app-secrets"
-  # How often ESO re-syncs.
-  refreshInterval: "1h"
-
-# Name of the K8s Secret that ESO creates. Referenced by all deployments.
-existingSecret: "bookgate-secret"
-
-# ── Alerting ─────────────────────────────────────────────────────────────────
+  clusterSecretStoreName: aws-secretsmanager
+  remoteSecretName: bookgate/dev/app-secrets
+  refreshInterval: 1h
+existingSecret: bookgate-secret
 prometheusRule:
-  enabled: false
-  # Memory usage threshold to fire HighMemoryUsage (0.0–1.0)
-  memoryThreshold: "0.85"
-
-# ── Ingress (AWS Load Balancer Controller) ────────────────────────────────────
+  enabled: true
+  memoryThreshold: '0.85'
 ingress:
-  # Leave empty to expose the app directly through the ALB DNS name without any domain.
-  host: ""
-  scheme: "internet-facing"
+  host: bookgate.canhnq.online
+  scheme: internet-facing
   idleTimeoutSeconds: 300
-  certificateArn: ""
-  groupName: "bookgate"
-
-# ── External DNS (Route 53 automation) ───────────────────────────────────────
+  certificateArn: ''
+  groupName: bookgate
 externalDns:
   enabled: false
   image:
-    repository: "registry.k8s.io/external-dns/external-dns"
-    tag: "v0.18.0"
+    repository: registry.k8s.io/external-dns/external-dns
+    tag: v0.18.0
     pullPolicy: IfNotPresent
   serviceAccount:
-    name: "external-dns"
-    roleArn: ""  # Terraform output: external_dns_role_arn
-  provider: "aws"
-  policy: "upsert-only"
+    name: external-dns
+    roleArn: arn:aws:iam::392423995152:role/bookgate-eks-external-dns-role
+  provider: aws
+  policy: sync
   domainFilters:
-    - "canhnq.online"
-  txtOwnerId: "bookgate-eks"
+  - canhnq.online
+  txtOwnerId: bookgate-eks
   resources:
     requests:
       cpu: 50m

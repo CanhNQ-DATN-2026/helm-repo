@@ -14,7 +14,7 @@ spec:
       helm:
         releaseName: loki-stack
         valueFiles:
-          - $values/loki-stack/values-dev.yaml
+          - $values/loki-stack/values.yaml
     - repoURL: https://github.com/CanhNQ-DATN-2026/helm-repo.git
       targetRevision: main
       ref: values

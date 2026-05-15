@@ -14,7 +14,7 @@ spec:
       helm:
         releaseName: kube-prometheus-stack
         valueFiles:
-          - $values/kube-prometheus-stack/values-dev.yaml
+          - $values/kube-prometheus-stack/values.yaml
     - repoURL: https://github.com/CanhNQ-DATN-2026/helm-repo.git
       targetRevision: main
       ref: values
