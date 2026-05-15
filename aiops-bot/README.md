@@ -70,13 +70,11 @@ externalSecrets:
 telegram:
   allowlist:
     enabled: true
-    chatIds:
-      - "-1001234567890"
     userIds:
-      - "123456789"
+      - "6855542290"
 ```
 
-`chatIds` are Telegram group/supergroup IDs allowed to use the bot. `userIds` are Telegram users allowed in private chat; when set, group usage is also restricted to these users. The bot is fail-closed if the allowlist is enabled but empty.
+`userIds` are Telegram users allowed to use the bot in private chats and groups. The bot is fail-closed if the allowlist is enabled but empty.
 
 ### 4. Install the Chart
 
@@ -146,8 +144,7 @@ kubectl get secret aiops-bot-secret -n bookgate
 | `externalSecrets.remoteSecretName` | AWS Secrets Manager secret name | `bookgate/dev/aiops-bot-secrets` |
 | `externalSecrets.refreshInterval` | ESO refresh interval | `1h` |
 | `telegram.allowlist.enabled` | Mount Telegram allowlist ConfigMap | `true` |
-| `telegram.allowlist.chatIds` | Allowed Telegram group/supergroup IDs | `[]` |
-| `telegram.allowlist.userIds` | Allowed Telegram user IDs | `[]` |
+| `telegram.allowlist.userIds` | Allowed Telegram user IDs | `["6855542290"]` |
 | `existingSecret` | Secret name for credentials | `aiops-bot-secret` |
 | `namespace` | Target namespace | `bookgate` |
 
@@ -156,7 +153,7 @@ kubectl get secret aiops-bot-secret -n bookgate
 - **Deployment**: Single replica bot deployment
 - **Service**: ClusterIP service on port 8080
 - **ServiceAccount**: With IRSA annotation for AWS access
-- **ConfigMap**: Telegram chat/user allowlist
+- **ConfigMap**: Telegram user allowlist
 - **ClusterRole**: Read-only access to pods, events, deployments, ArgoCD apps
 - **ClusterRoleBinding**: Binds ServiceAccount to ClusterRole
 - **ExternalSecret** (optional): Syncs secrets from AWS Secrets Manager

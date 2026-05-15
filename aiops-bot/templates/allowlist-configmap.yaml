@@ -8,11 +8,6 @@ metadata:
     {{- include "aiops-bot.labels" . | nindent 4 }}
 data:
   telegram-allowlist.txt: |
-    [chat_ids]
-    {{- range .Values.telegram.allowlist.chatIds }}
-    {{ . }}
-    {{- end }}
-
     [user_ids]
     {{- range .Values.telegram.allowlist.userIds }}
     {{ . }}

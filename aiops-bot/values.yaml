@@ -28,8 +28,8 @@ claude:
 telegram:
   allowlist:
     enabled: true
-    chatIds: []
-    userIds: []
+    userIds:
+      - "6855542290"
 
 resources:
   requests:
