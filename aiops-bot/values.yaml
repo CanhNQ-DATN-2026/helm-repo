@@ -23,6 +23,7 @@ bedrock:
   region: "us-east-1"
 
 claude:
+  model: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
   outputTokenLimit: 1200
 
 telegram:

@@ -31,6 +31,8 @@ spec:
               value: {{ .Values.bedrock.roleArn | quote }}
             - name: AWS_BEDROCK_REGION
               value: {{ .Values.bedrock.region | quote }}
+            - name: CLAUDE_MODEL
+              value: {{ .Values.claude.model | quote }}
             - name: CLAUDE_OUTPUT_TOKEN_LIMIT
               value: {{ .Values.claude.outputTokenLimit | quote }}
             - name: TELEGRAM_ALLOWLIST_PATH
