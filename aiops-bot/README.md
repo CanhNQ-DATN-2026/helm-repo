@@ -133,7 +133,12 @@ kubectl get secret aiops-bot-secret -n bookgate
 | `port` | Container port | `8080` |
 | `serviceAccount.name` | ServiceAccount name | `aiops-bot` |
 | `serviceAccount.roleArn` | IRSA role ARN | `""` |
-| `claude.model` | Claude Code Bedrock model ID | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| `claude.models.default` | Default Claude Code Bedrock model ID | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| `claude.models.health` | Model for health/status requests | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| `claude.models.troubleshoot` | Model for troubleshooting requests | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| `claude.models.change` | Model for change/provisioning requests | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| `claude.models.explain` | Model for explanation requests | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| `claude.models.unknown` | Model for unknown/ambiguous requests | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | `claude.outputTokenLimit` | Target output token budget | `1200` |
 | `resources.requests.cpu` | CPU request | `100m` |
 | `resources.requests.memory` | Memory request | `256Mi` |
