@@ -11,7 +11,7 @@ metadata:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/group.name: {{ .Values.ingress.groupName }}
     {{- if .Values.ingress.host }}
-    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingress.host | quote }}
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingress.dnsHost | default .Values.ingress.host | quote }}
     {{- end }}
 
     # Idle timeout — must exceed the longest expected SSE stream duration
