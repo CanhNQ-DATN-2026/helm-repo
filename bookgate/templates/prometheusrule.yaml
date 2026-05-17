@@ -61,6 +61,59 @@ spec:
             summary: "High memory usage in {{ "{{" }} $labels.container {{ "}}" }}"
             description: "Container {{ "{{" }} $labels.container {{ "}}" }} in pod {{ "{{" }} $labels.pod {{ "}}" }} is using {{ "{{" }} $value | humanizePercentage {{ "}}" }} of its memory limit."
 
+        - alert: BookgateApiHighCpuUsage
+          expr: |
+            (
+              sum by (pod, container) (
+                rate(container_cpu_usage_seconds_total{
+                  namespace="{{ include "bookgate.namespace" . }}",
+                  container="api-service"
+                }[5m])
+              )
+              /
+              sum by (pod, container) (
+                kube_pod_container_resource_limits{
+                  namespace="{{ include "bookgate.namespace" . }}",
+                  container="api-service",
+                  resource="cpu"
+                }
+              )
+            ) > {{ .Values.prometheusRule.cpuUsageThreshold }}
+          for: 2m
+          labels:
+            severity: warning
+            namespace: {{ include "bookgate.namespace" . }}
+            service: api-service
+          annotations:
+            summary: "High CPU usage in api-service"
+            description: "Container api-service in pod {{ "{{" }} $labels.pod {{ "}}" }} is using {{ "{{" }} $value | humanizePercentage {{ "}}" }} of its CPU limit."
+
+        - alert: BookgateApiCpuThrottling
+          expr: |
+            (
+              sum by (pod, container) (
+                rate(container_cpu_cfs_throttled_periods_total{
+                  namespace="{{ include "bookgate.namespace" . }}",
+                  container="api-service"
+                }[5m])
+              )
+              /
+              sum by (pod, container) (
+                rate(container_cpu_cfs_periods_total{
+                  namespace="{{ include "bookgate.namespace" . }}",
+                  container="api-service"
+                }[5m])
+              )
+            ) > {{ .Values.prometheusRule.cpuThrottlingThreshold }}
+          for: 2m
+          labels:
+            severity: warning
+            namespace: {{ include "bookgate.namespace" . }}
+            service: api-service
+          annotations:
+            summary: "CPU throttling detected in api-service"
+            description: "Container api-service in pod {{ "{{" }} $labels.pod {{ "}}" }} is throttled for {{ "{{" }} $value | humanizePercentage {{ "}}" }} of CPU scheduling periods."
+
         - alert: BookgateDeploymentUnavailable
           expr: |
             kube_deployment_spec_replicas{namespace="{{ include "bookgate.namespace" . }}"}

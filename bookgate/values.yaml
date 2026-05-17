@@ -14,10 +14,10 @@ apiService:
     roleArn: arn:aws:iam::392423995152:role/bookgate-eks-backend-role
   resources:
     requests:
-      cpu: 250m
+      cpu: 50m
       memory: 256Mi
     limits:
-      cpu: 500m
+      cpu: 100m
       memory: 512Mi
   env:
     corsOrigins: http://bookgate.canhnq.online
@@ -63,6 +63,8 @@ existingSecret: bookgate-secret
 prometheusRule:
   enabled: true
   memoryThreshold: '0.85'
+  cpuUsageThreshold: '0.80'
+  cpuThrottlingThreshold: '0.20'
 ingress:
   host: bookgate.canhnq.online
   scheme: internet-facing
