@@ -68,7 +68,7 @@ spec:
                 rate(container_cpu_usage_seconds_total{
                   namespace="{{ include "bookgate.namespace" . }}",
                   container="api-service"
-                }[5m])
+                }[1m])
               )
               /
               sum by (pod, container) (
@@ -79,7 +79,7 @@ spec:
                 }
               )
             ) > {{ .Values.prometheusRule.cpuUsageThreshold }}
-          for: 2m
+          for: 30s
           labels:
             severity: warning
             namespace: {{ include "bookgate.namespace" . }}
@@ -95,17 +95,17 @@ spec:
                 rate(container_cpu_cfs_throttled_periods_total{
                   namespace="{{ include "bookgate.namespace" . }}",
                   container="api-service"
-                }[5m])
+                }[1m])
               )
               /
               sum by (pod, container) (
                 rate(container_cpu_cfs_periods_total{
                   namespace="{{ include "bookgate.namespace" . }}",
                   container="api-service"
-                }[5m])
+                }[1m])
               )
             ) > {{ .Values.prometheusRule.cpuThrottlingThreshold }}
-          for: 2m
+          for: 30s
           labels:
             severity: warning
             namespace: {{ include "bookgate.namespace" . }}
