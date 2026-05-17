@@ -19,7 +19,7 @@ metadata:
       idle_timeout.timeout_seconds={{ .Values.ingress.idleTimeoutSeconds }}
 
     # Health check paths per target group
-    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-path: /health-fail
     alb.ingress.kubernetes.io/success-codes: "200"
 
     {{- if .Values.ingress.certificateArn }}
