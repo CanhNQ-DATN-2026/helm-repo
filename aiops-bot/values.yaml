@@ -7,7 +7,7 @@ ecr:
 # ── AIOps Bot ────────────────────────────────────────────────────────────────
 image:
   repository: bookgate/aiops-bot
-  tag: "28bdf55"
+  tag: "57bbb6c"
   pullPolicy: Always
 
 replicas: 1
