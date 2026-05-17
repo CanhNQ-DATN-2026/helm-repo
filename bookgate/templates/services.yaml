@@ -9,9 +9,7 @@ spec:
     app: {{ include "bookgate.name" . }}-api
   ports:
     - port: {{ .Values.apiService.port }}
-      # Demo scenario: Ingress/Service forwards API traffic to a closed port,
-      # while the api-service pod remains Running/Ready on its real container port.
-      targetPort: 9999
+      targetPort: {{ .Values.apiService.port }}
 ---
 apiVersion: v1
 kind: Service
