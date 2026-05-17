@@ -65,7 +65,6 @@ prometheusRule:
   memoryThreshold: '0.85'
 ingress:
   host: bookgate.canhnq.online
-  dnsHost: wrong-bookgate.canhnq.online
   scheme: internet-facing
   idleTimeoutSeconds: 300
   certificateArn: ''
