@@ -22,6 +22,8 @@ spec:
           value: arn:aws:iam::392423995152:role/bookgate-eks-external-dns-role
         - name: provider.name
           value: aws
+        - name: policy
+          value: sync
         - name: env[0].name
           value: AWS_DEFAULT_REGION
         - name: env[0].value
