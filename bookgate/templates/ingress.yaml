@@ -18,8 +18,8 @@ metadata:
     alb.ingress.kubernetes.io/load-balancer-attributes: >-
       idle_timeout.timeout_seconds={{ .Values.ingress.idleTimeoutSeconds }}
 
-    # Health check paths per target group
-    alb.ingress.kubernetes.io/healthcheck-path: /health
+    # Demo scenario: make ALB target groups unhealthy while Kubernetes pods remain Running/Ready.
+    alb.ingress.kubernetes.io/healthcheck-path: /__alb-healthcheck-fail
     alb.ingress.kubernetes.io/success-codes: "200"
 
     {{- if .Values.ingress.certificateArn }}
