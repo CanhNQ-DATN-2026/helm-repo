@@ -135,8 +135,8 @@ kubectl get secret aiops-bot-secret -n bookgate
 | `serviceAccount.roleArn` | IRSA role ARN | `""` |
 | `claude.models.default` | Default Claude Code Bedrock model ID | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | `claude.models.health` | Model for health/status requests | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
-| `claude.models.troubleshoot` | Model for troubleshooting requests | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
-| `claude.models.change` | Model for change/provisioning requests | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| `claude.models.troubleshoot` | Model for troubleshooting requests | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| `claude.models.change` | Model for change/provisioning requests | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | `claude.models.explain` | Model for explanation requests | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | `claude.models.unknown` | Model for unknown/ambiguous requests | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | `claude.outputTokenLimit` | Target output token budget | `1200` |
