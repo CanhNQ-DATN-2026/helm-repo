@@ -31,6 +31,14 @@ spec:
               value: {{ .Values.bedrock.roleArn | quote }}
             - name: AWS_BEDROCK_REGION
               value: {{ .Values.bedrock.region | quote }}
+            - name: BEDROCK_KB_ENABLED
+              value: {{ .Values.rag.enabled | quote }}
+            - name: BEDROCK_KB_ID
+              value: {{ .Values.rag.knowledgeBaseId | quote }}
+            - name: BEDROCK_KB_REGION
+              value: {{ .Values.rag.region | quote }}
+            - name: BEDROCK_KB_RESULTS
+              value: {{ .Values.rag.results | quote }}
             - name: CLAUDE_DEFAULT_MODEL
               value: {{ .Values.claude.models.default | quote }}
             - name: CLAUDE_HEALTH_MODEL
