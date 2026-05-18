@@ -26,7 +26,7 @@ claude:
   models:
     default: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
     health: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-    troubleshoot: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    troubleshoot: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
     change: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
     explain: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
     unknown: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
