@@ -64,14 +64,14 @@ kubectl get ingress -n bookgate -o wide
 ```bash
 kubectl get externalsecret -n bookgate
 kubectl get secret bookgate-secret -n bookgate
-kubectl logs -n bookgate deploy/bookgate-external-dns --tail=100
+kubectl logs -n bookgate deploy/external-dns --tail=100
 curl -I http://bookgate.canhnq.online
 curl http://bookgate.canhnq.online/health
 ```
 
 Kỳ vọng:
 - `bookgate-secret` sync thành công
-- `api`, `chat`, `frontend`, `bookgate-external-dns` chạy ổn
+- `api`, `chat`, `frontend`, `external-dns` chạy ổn
 - ingress có ALB hostname
 - `bookgate.canhnq.online` trả `200 OK`
 

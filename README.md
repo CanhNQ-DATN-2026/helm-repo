@@ -64,7 +64,6 @@ bookgate/templates/
   - ECR registry
   - image tag
   - backend IRSA role ARN
-  - external-dns IRSA role ARN
   - S3 bucket
   - domain `bookgate.canhnq.online`
   - secret path `bookgate/dev/app-secrets`
@@ -75,7 +74,7 @@ Dev hiện đang được chuẩn hóa theo:
 - release name: `bookgate`
 - namespace: `bookgate`
 - ingress host: `bookgate.canhnq.online`
-- external-dns: `enabled`
+- external-dns: deployed by [argocd/external-dns.yaml](/Users/nguyenquangcanh/atlantic/helm-charts/argocd/external-dns.yaml)
 - external secret source: `bookgate/dev/app-secrets`
 
 ## Argo CD Application
@@ -163,14 +162,14 @@ kubectl get pods -n bookgate
 kubectl get externalsecret -n bookgate
 kubectl get secret -n bookgate bookgate-secret
 kubectl get ingress -n bookgate -o wide
-kubectl logs -n bookgate deploy/bookgate-external-dns --tail=100
+kubectl logs -n bookgate deploy/external-dns --tail=100
 curl -I http://bookgate.canhnq.online
 curl http://bookgate.canhnq.online/health
 ```
 
 Kỳ vọng:
 - `bookgate-secret` đã sync
-- `api`, `chat`, `frontend`, `bookgate-external-dns` đều chạy
+- `api`, `chat`, `frontend`, `external-dns` đều chạy
 - ingress có ALB hostname
 - `bookgate.canhnq.online` trả `200 OK`
 
@@ -261,9 +260,9 @@ helm upgrade --install bookgate ./bookgate \
 - kiểm tra IAM role của ESO còn trust đúng OIDC hiện tại
 
 `external-dns` không tạo record
-- kiểm tra `externalDns.enabled=true` trong `values.yaml`
-- kiểm tra role ARN trong `values.yaml`
-- kiểm tra log `deploy/bookgate-external-dns`
+- kiểm tra Application `external-dns` trong Argo CD
+- kiểm tra role ARN trong [argocd/external-dns.yaml](/Users/nguyenquangcanh/atlantic/helm-charts/argocd/external-dns.yaml)
+- kiểm tra log `deploy/external-dns`
 
 `InvalidImageName`
 - chart đã xử lý tag số bằng `%v`
