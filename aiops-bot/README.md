@@ -4,10 +4,10 @@ Standalone Helm chart for the Bookgate AIOps monitoring bot.
 
 ## Prerequisites
 
-1. **Terraform IRSA Role**: Apply the aiops-bot IAM role from `terraform-infra/irsa.tf`
-2. **Secrets**: Choose between manual K8s Secret or External Secrets Operator
-3. **Cluster**: EKS cluster with OIDC provider configured
-4. **External Secrets Operator** (optional): If using ESO, ensure ClusterSecretStore is configured
+1. Terraform has created the EKS cluster, OIDC provider, and `aiops_bot_role_arn`.
+2. External Secrets Operator is installed.
+3. `ClusterSecretStore/aws-secretsmanager` exists.
+4. AWS Secrets Manager contains `bookgate/dev/aiops-bot-secrets`.
 
 ## Installation
 
@@ -19,40 +19,21 @@ terraform apply
 terraform output aiops_bot_role_arn
 ```
 
-### 2. Create Secrets in AWS Secrets Manager (Recommended)
+### 2. Create Secrets in AWS Secrets Manager
 
 ```bash
-# Create the secret in AWS Secrets Manager
 aws secretsmanager create-secret \
   --name bookgate/dev/aiops-bot-secrets \
   --description "AIOps bot credentials" \
   --secret-string '{
-    "anthropic_api_key": "YOUR_ANTHROPIC_KEY",
     "telegram_bot_token": "YOUR_TELEGRAM_TOKEN",
+    "telegram_alert_bot_token": "YOUR_ALERT_TELEGRAM_TOKEN",
     "telegram_chat_id": "YOUR_CHAT_ID"
   }' \
   --region us-east-1
 ```
 
-The Helm chart will automatically create an ExternalSecret resource when `externalSecrets.enabled: true`.
-
-**Alternative: Manual K8s Secret**
-
-If you prefer not to use External Secrets Operator:
-
-```bash
-kubectl create secret generic aiops-bot-secret \
-  --from-literal=anthropic_api_key=YOUR_ANTHROPIC_KEY \
-  --from-literal=telegram_bot_token=YOUR_TELEGRAM_TOKEN \
-  --from-literal=telegram_chat_id=YOUR_CHAT_ID \
-  -n bookgate
-```
-
-Then disable External Secrets in your values:
-```yaml
-externalSecrets:
-  enabled: false
-```
+The chart creates an `ExternalSecret` when `externalSecrets.enabled: true`.
 
 ### 3. Update values.yaml
 
@@ -61,7 +42,7 @@ serviceAccount:
   roleArn: "arn:aws:iam::392423995152:role/bookgate-eks-aiops-bot-role"
 
 image:
-  tag: "latest"  # or specific commit SHA
+  tag: "9796a2f"  # usually bumped by GitHub Actions
 
 externalSecrets:
   enabled: true
@@ -81,12 +62,11 @@ telegram:
 ```bash
 cd ~/repo/CanhNQ-DATN-2026/helm-repo
 
-# Install
 helm install aiops-bot ./aiops-bot \
   -n bookgate \
+  --create-namespace \
   -f aiops-bot/values.yaml
 
-# Upgrade
 helm upgrade aiops-bot ./aiops-bot \
   -n bookgate \
   -f aiops-bot/values.yaml
@@ -144,7 +124,7 @@ kubectl get secret aiops-bot-secret -n bookgate
 | `resources.requests.memory` | Memory request | `256Mi` |
 | `resources.limits.cpu` | CPU limit | `500m` |
 | `resources.limits.memory` | Memory limit | `512Mi` |
-| `externalSecrets.enabled` | Enable External Secrets Operator | `false` |
+| `externalSecrets.enabled` | Enable External Secrets Operator | `true` |
 | `externalSecrets.clusterSecretStoreName` | ClusterSecretStore name | `aws-secretsmanager` |
 | `externalSecrets.remoteSecretName` | AWS Secrets Manager secret name | `bookgate/dev/aiops-bot-secrets` |
 | `externalSecrets.refreshInterval` | ESO refresh interval | `1h` |
@@ -170,6 +150,9 @@ The bot has the following AWS permissions:
 - `rds:DescribeEvents`
 - `cloudwatch:GetMetricStatistics`
 - `cloudwatch:ListMetrics`
+- `sts:AssumeRole` to the configured Bedrock role
+
+The ServiceAccount also currently has `AdministratorAccess` attached in Terraform for lab/demo operations. Narrow this before production use.
 
 ## Uninstall
 

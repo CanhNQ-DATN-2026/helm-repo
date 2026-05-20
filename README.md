@@ -4,9 +4,9 @@ Repo này là source of truth cho deploy Bookgate bằng Argo CD.
 
 Hiện tại repo chứa:
 - chart ứng dụng `bookgate/`
-- values base `bookgate/values.yaml`
-- values live `bookgate/values.yaml`
-- manifest Argo CD `argocd/bookgate-dev.yaml`
+- chart AIOps bot `aiops-bot/`
+- cấu hình monitoring/Loki/addons theo thư mục riêng
+- manifest Argo CD trong `argocd/`
 
 URL mục tiêu hiện tại:
 - app: `http://bookgate.canhnq.online`
@@ -22,7 +22,7 @@ Luồng chuẩn:
    - `ClusterSecretStore/aws-secretsmanager`
    - Argo CD
 3. Repo này giữ toàn bộ desired state của app.
-4. Argo CD đọc `argocd/bookgate-dev.yaml`, render chart `bookgate/` với `values.yaml`, rồi sync vào namespace `bookgate`.
+4. Argo CD đọc các manifest trong `argocd/`, render chart tương ứng với `values.yaml`, rồi sync vào cluster.
 
 Điểm quan trọng:
 - Không còn phụ thuộc vào `helm upgrade --set ...` để giữ cấu hình môi trường.
@@ -36,8 +36,10 @@ Những thứ phải có trước khi apply Argo CD Application:
 - AWS Load Balancer Controller hoạt động
 - External Secrets Operator hoạt động
 - `ClusterSecretStore` tên `aws-secretsmanager`
-- Secret trên AWS Secrets Manager:
+- Secrets trên AWS Secrets Manager:
   - `bookgate/dev/app-secrets`
+  - `bookgate/dev/aiops-bot-secrets`
+  - `bookgate/dev/argocd` nếu Helm repo là private
 - ECR đã có image tag tương ứng
 - Argo CD đã được cài trong cluster
 
@@ -45,28 +47,30 @@ Những thứ phải có trước khi apply Argo CD Application:
 
 ```text
 argocd/bookgate-dev.yaml
+argocd/aiops-bot.yaml
 bookgate/Chart.yaml
 bookgate/values.yaml
-bookgate/values.yaml
 bookgate/templates/
+aiops-bot/Chart.yaml
+aiops-bot/values.yaml
+aiops-bot/templates/
 ```
 
 ## Values Strategy
 
 `bookgate/values.yaml`
-- base values dùng chung
-- không chứa cấu hình môi trường thật
-- không nên sửa theo từng release
+- desired state thật của môi trường dev cho app BookGate
 
-`bookgate/values.yaml`
-- desired state thật của môi trường dev hiện tại
-- đang chứa:
-  - ECR registry
-  - image tag
-  - backend IRSA role ARN
-  - S3 bucket
-  - domain `bookgate.canhnq.online`
-  - secret path `bookgate/dev/app-secrets`
+`aiops-bot/values.yaml`
+- desired state thật của môi trường dev cho AIOps bot
+
+Các values này chứa:
+- ECR registry
+- image tag
+- ServiceAccount IRSA role ARN
+- domain/secret path/runtime config không nhạy cảm
+
+Secret value thật nằm trong AWS Secrets Manager, không nằm trong repo.
 
 ## Current Dev Config
 
@@ -76,17 +80,19 @@ Dev hiện đang được chuẩn hóa theo:
 - ingress host: `bookgate.canhnq.online`
 - external-dns: deployed by [argocd/external-dns.yaml](/Users/nguyenquangcanh/atlantic/helm-charts/argocd/external-dns.yaml)
 - external secret source: `bookgate/dev/app-secrets`
+- AIOps release name: `aiops-bot`
+- AIOps secret source: `bookgate/dev/aiops-bot-secrets`
 
 ## Argo CD Application
 
-Manifest sẵn có:
+Manifest app chính:
 - [argocd/bookgate-dev.yaml](/Users/nguyenquangcanh/atlantic/helm-charts/argocd/bookgate-dev.yaml)
+- [argocd/aiops-bot.yaml](/Users/nguyenquangcanh/atlantic/helm-charts/argocd/aiops-bot.yaml)
 
-Manifest này:
+Các manifest này:
 - trỏ tới repo `https://github.com/CanhNQ-DATN-2026/helm-repo.git`
-- dùng chart path `bookgate`
+- dùng chart path tương ứng
 - dùng values file `values.yaml`
-- đặt release name là `bookgate`
 - bật:
   - `automated.prune=true`
   - `automated.selfHeal=true`
